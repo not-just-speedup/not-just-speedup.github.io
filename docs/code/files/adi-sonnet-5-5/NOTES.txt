@@ -1,0 +1,161 @@
+# case-24 (PolyBench ADI) — CUDA port: notes
+
+Device: NVIDIA B300 (sm_103, 148 SMs).  Everything below was measured on it.  CPU baseline = `baseline/compute.inc`
+compiled like `check-example` does (`-O3 -fno-fast-math -ffp-contract=off`).
+
+## 1. Summary
+
+`candidate/solution.cu` does **not** translate the time loop literally.  The ADI iteration is linear with constant
+coefficients, so the whole `n0`-step run has a closed form that is applied with FFT convolutions: the cost no longer
+depends on `n0` (apart from a few scalar powers per mode) and there is no sequential Thomas recurrence at all.
+
+| shape (n0 x n1) | `pb_compute` wall time | CPU baseline |
+|---|---|---|
+| 1 x 6 / 20 x 30 / 40 x 60 | 35 / 46 / 49 us | µs..ms |
+| 100 x 200 | 62 us | 66 ms |
+| 500 x 1000 | 138 us | 8.2 s |
+| 1000 x 2000 | 425 us | ~65 s |
+| 100 x 3000 | 1.1 ms | |
+| 500 x 4000 | 2.1 ms | |
+| 20 x 6000 | 4.5 ms | |
+
+(median of 200 calls, host timer around `pb_compute()` including its synchronisation).  Results are 10-1000x
+*more* accurate than the CPU baseline (see §4), which is itself inexact by 1e-14 ... 1e-8.
+
+## 2. The computation and why it can be restructured
+
+`buf0 = u`, `buf1 = v`, `buf2 = p`, `buf3 = q`.  Facts read off `compute.inc`:
+
+* `p[i][j]` depends only on `j`; every coefficient depends only on `(n0, n1)`; scratch buffers are never read before
+  they are written (so only `buf0` is uploaded/downloaded).
+* Each time step is two tridiagonal sweeps with Dirichlet value 1 on the boundary; rows `0`/`n1-1` of `u` are never
+  read or written; `u[i][0] = u[i][n1-1] = 1` after the first step, but the *first* step reads the user's boundary columns.
+* The device is a B300: FP64 is only ~0.5 TFMA/s (1.7 FMA/clk/SM, every warp-wide FP64 instruction occupies its pipe ~64
+  cycles), the dependent-FMA latency is 63 cycles and a DDIV ~600 cycles, while the FP32 pipes are ~76x wider.  A literal
+  translation is therefore latency bound (`~0.8 us * n1` per step, only `n1` independent lines, `2*n0` global barriers).
+
+### Closed form
+Put `U = 1 + W`.  The all-ones grid is an exact fixed point (with all boundary values 1), so with `N = n1-2`,
+`L = n1-1`, `rho_x = n1^2/n0`, `rho_y = rho_x/2` and `K = tridiag(-1,2,-1)`:
+
+    W' = P W Q,   P = (I - rho_x K)(I + rho_x K)^-1 = 2 (I + rho_x K)^-1 - I,   Q likewise with rho_y.
+
+The first step additionally sees the user's boundary columns `W_L, W_R`:
+
+    W_final = P_n (W Q_n) + (P_n W_L) e1^T + (P_n W_R) e2^T,     P_n = P^n, Q_n = Q^n.
+
+`K` is diagonalised by the DST-I `S`: `P_n = S diag(G) S` with `G_k = g_k^n0`, `g_k = (1-x)/(1+x)`,
+`x = rho_x * 4 sin^2(pi k / 2L)`.  Consequently `P_n` is **Toeplitz minus Hankel**,
+
+    P_n[j][j'] = kappa(j-j') - kappa(j+j'),    kappa(d) = (1/L) sum_k G_k cos(pi k d / L)
+
+(same for `Q_n` with `H_l = h_l^n0`), and `e1[i] = sum_l Fs_l sin(pi l i/L)`, `e2[i] = e1[N+1-i]`,
+`Fs_l = (2 rho_y / L) h_l^(n0-1) sin(pi l/L) / (1 + rho_y lambda_l)`.  (Writing `e1` as a product of sines instead of a
+difference of cosines removes a cancellation that amplified rounding by `rho_y/L`.)
+
+### How it is applied
+A Toeplitz-minus-Hankel matrix-vector product is a zero-padded linear convolution, so **any FFT size `M >= 2N` works**:
+no dependence on the factorisation of `n1-1`, no Bluestein.  Two real lines are packed into one complex FFT (re/im) and
+the frequency-domain step collapses to `Yhat[f] = A[f] Z[f] + B[f] Z[M-f]` (`A`, `B` = FFT of the packed kernel arrays
+`kT + i kH`).  So the whole problem is: build `kappa_P`, `kappa_Q`, `e1` (O(N^2) sums), FFT the two kernels, then one
+row pass (apply `Q_n`, transposed store) and one column pass (apply `P_n`, rank-2 correction, `1 +`).
+
+## 3. Implementation (`candidate/solution.cu`)
+
+Per `pb_compute()` (nothing computed from the input or from `(n0, n1)` is cached between calls; `pb_setup` only builds
+shape-dependent *plan* tables: FFT twiddles, digit-reversal permutation, cos/sin tables, pointers, kernel attributes):
+
+1. `mult_kernel` — per mode pair `(k, L-k)`: `G`, `H`, `Fs` in **double-double** (reciprocal-based dd division,
+   binary powering with exponent `n0`, no divergence between lane types); emits pair sums/differences used by 2.
+2. `kappa_kernel` — one warp per output: `kappa_P(d), kappa_Q(d)` for `d <= L` (mirrored: `kappa(2L-d) = kappa(d)`),
+   and `e1(i)`; mode pairing halves the FP64 work; scaling by `1/(L M)` (folds the unnormalised inverse FFT) in dd.
+3. `kernel_spectrum_kernel[_df]` — FFT of the packed kernels -> `A`, `B` (FP64, or df64 when the df passes are used).
+4. `pass_kernel<0>` — rows: load `W = U - 1`, FFT, apply `Q`, inverse FFT, transposed store; one extra block does the
+   boundary vectors with `P`.  5. `pass_kernel<1>` — columns: FFT, apply `P`, inverse FFT, `W += pwl e1 + pwr e2`,
+   write `1 + W` into `buf0` (boundary columns of `buf0` are set to 1 by the first pass; rows 0 and `n1-1` are never written).
+
+FFT engine: in-place mixed radix 2/3/4/5 in shared memory (`M <= 13824`), forward = DIT with the digit-reversal
+permutation applied on load (natural-order output), inverse = the stages run backwards with conjugate twiddles (its
+output sits at permuted positions and is gathered on store).  The size `M` is chosen by an instruction-count cost model
+among 5-smooth sizes (radix-4 chains are ~12% cheaper per size, so `4096` beats `4000`).  Stage 1 skips its all-ones twiddles.
+
+### Three compute paths and the dispatch (`pb_setup`)
+* `n1 <= 2`: nothing to compute (`buf0` returned as uploaded).
+* **REPLICA** (`n1 <= 5 && n0 <= 16`, and the fallback for `n1 > 6913` when the FFT would not fit in shared memory):
+  a literal transcription of the baseline with `__dmul_rn/__dadd_rn/__ddiv_rn` (no FMA), bit-identical to the CPU
+  baseline (verified `bitdiff = 0` on dozens of shapes).  It is only used where it is the cheaper/safer choice: its
+  error *equals* the baseline's, so its acceptance margin is ~1, whereas the spectral path's is 0.003-0.2.
+* **SPECTRAL FP64** (default).
+* **SPECTRAL df64**: the same algorithm with the FFT/operator/intermediate arrays in *double-float* (two FP32 numbers,
+  ~48 bits) arithmetic on the FP32 pipes, 3.3x faster (see below).  Error ~1-4e-14 absolute, so it is enabled only
+  where the baseline's own deviation is orders of magnitude larger: `n1 >= 300 && 0.1*eps*rho*sqrt(min(n0, 2 rho)) >= 5e-13`
+  (`rho = n1^2/n0`).  That expression was fitted as a *lower bound* of the measured `max|cpu - ref|` over 40 shapes
+  (ratio actual/estimate 0.82 ... 170).  At the gate boundary the measured needed factor is ~0.05.
+
+df64 details: input split and output assembly are done with 32-bit integer bit manipulation (exact; verified on
+12M random + adversarial values) because FP64 DADD and float->double conversions are the scarce resource on this GPU;
+`T1` and the boundary vectors stay in (hi, lo) float pairs between the two passes, so the pass kernels contain no FP64-pipe
+instruction at all (the final assembly of a double is an integer add on the bit pattern of `|hi|`, which also handles the
+carry/borrow across binades).  The register bound of the kernel is chosen from the shared-memory residency (3 or 4 CTAs/SM).
+
+### Launch structure
+Dedicated non-blocking stream; `kappa`, `kernel_spectrum` (and `pass1` for df64 / short FP64 shapes) are launched with
+programmatic dependent launch (`griddepcontrol.wait/launch_dependents`), so `pass1` already loads and transforms while
+the kernel spectra are still being computed.  FP64 passes longer than M=512 are *not* early-started (they would fight the
+FP64 setup kernels for the same pipe: measured +17%).
+
+### Contract notes
+* `pb_upload` copies `buf0` into both `d_in` and `d_out` (scratch buffers carry no initialised region, so they are not
+  transferred); `pb_compute` reads `d_in` and writes `d_out`, so repeated `pb_compute` calls after one upload are
+  idempotent and rows `0`/`n1-1` stay bit-identical to the input.  `pb_download` copies `d_out`.
+* No kernel or device computation in upload/download; setup warms every kernel once on scratch contents.
+* Every entry point returns 0 or a CUDA error code; all CUDA calls are checked.
+
+## 4. Accuracy evidence
+
+Harness (in `/workspace/dev`, not part of the submission): runs the five entry points on random `[-1,1]` data and
+compares against (a) the CPU baseline kernel (templated copy, verified bit-identical to `compute.inc`), and (b) the same
+kernel in `__float128` (small shapes) or `long double` (large shapes; for very large `rho` its own error, ~1e-11, then
+dominates `|gpu - ref|`).  Metric = smallest acceptance factor that would pass with `atol = 0`:
+
+    needed = max_i |gpu_i - ref_i| / ( eps |ref_i| + max_k |cpu_k - ref_k| )         (eps = 2.22e-16)
+
+| path / regime | needed factor |
+|---|---|
+| replica | ~0.6-1.0 (= the baseline itself) |
+| spectral FP64, n1 >= 30 | <= 0.01 (typically 1e-3..1e-4); n1 = 6..9: <= 0.6 |
+| spectral FP64, huge decay (n0 = 5000..50000, n1 = 12..100) | <= 0.008 (gpu error 5e-17) |
+| spectral df64 (gated) | <= 0.057 (boundary shapes), <= 0.005 for n1 >= 1000 |
+
+Typical absolute errors: FP64 path 1e-15 (any shape), df64 path 1-4e-14, CPU baseline 1e-14 (n1 ~ 30) ... 5e-8
+(n1 ~ 2500, n0 = 30).  Sweeps run (all with non-finite = 0 and untouched rows bit-exact): 320 tiny shapes (n1 = 1..40,
+n0 = 1..100), 110 edge shapes (n1 = 2^k-1, 2^k, 2^k+1, 2^k+2, primes, M = 2N exactly), ~120 random shapes n1 = 300..3200,
+heavy-decay shapes, n0 up to 2^31-1, multi-invocation runs with fresh host buffers and repeated `pb_compute`, the largest
+FFT (n1 = 6913, M = 13824), and the replica fallback (n1 = 7100).  `check-example` and `--self-check` pass on all tried shapes.
+
+## 5. What I tried and rejected (and measured)
+
+* **Literal GPU translation** (thread per line, Thomas recurrence): latency bound, 63-cycle FMA + 600-cycle DDIV chain
+  per element, `n0` global barriers.  Kept only as the bit-exact replica.
+* **DST-I diagonalisation with Bluestein** for arbitrary `L`: validated numerically, but 4 FFTs per line pair per
+  dimension instead of 2 and needs chirp tables; replaced by the Toeplitz-minus-Hankel formulation (4x less FFT work).
+* **Dense DGEMM DST** with cuBLAS: native FP64 DGEMM is only 1 TFLOPS here and the FP64-emulation mode (INT8 tensor
+  cores are cut on B300) is 2x native; `8 N^3` flops loses to the FFT beyond N ~ 300.
+* **Truncating the kernels** (banded `P_n` for large `n0`): the Hankel corner structure needs `M ~ 2N` anyway.
+* **Batched prefetch of loads** (U = 1..4 per thread): more registers -> lower occupancy; U = 2 is best.
+* **Shared-memory XOR swizzle** against the bank conflicts of the digit-reversal scatter: only ~4% (not adopted).
+* **PDL for the pass1 -> pass2 hand-off** and 1024-thread kernel-spectrum blocks: no measurable gain.
+* **Guarding the stage-1 twiddles with a runtime branch**: blew up the registers of the df kernels (80 -> 164) and made
+  them 35% slower; fixed with a separate twiddle-free first-stage function.
+* The FP64 conversions inside the df load/store phases were ~50% of the df pass time before the integer rewrite.
+
+## 6. Limits / what I would do with more time
+
+* `n1 > 6913` (FFT does not fit in shared memory) falls back to the replica: correct but ~50x slower than possible
+  (a two-level global-memory FFT, or a 2-CTA cluster with distributed shared memory, would extend the spectral path).
+* The df64 gate is empirical (a lower-bound fit of the baseline's error); more shapes at the boundary would tighten it.
+  If the acceptance factor were ever below ~0.1 the gate could simply be set to never fire (everything else is FP64).
+* Remaining per-call overhead for small/medium shapes is the 3-kernel setup chain (`mult` ~12 us is FP64-instruction
+  bound; `kernel_spectrum` is a single-block FFT per operator).  A multi-CTA kernel-spectrum FFT, a shared-memory cos
+  table for `kappa_kernel`, pruning of the zero-padded first and the discarded last FFT stage (~4%), and fusing two FFT
+  stages in registers (fewer shared-memory round trips) are the next steps.

@@ -1,0 +1,196 @@
+# NOTES — case-10 (Durbin recursion / Yule-Walker system)
+
+## What the computation is
+
+`compute.inc` is Durbin's algorithm: it solves `T y = -r`, where `T` is the
+n x n symmetric positive definite Toeplitz matrix with ones on the diagonal
+and `r[0..n-2]` on its off-diagonals, and the right-hand side is `-r[0..n-1]`.
+The recursion is O(n^2) work in n strictly sequential steps (each step needs
+the reflection coefficient of the previous one), and the baseline's inner
+product is a sequential float sum. `check-example` timed the CPU baseline at
+23.9 ms for n = 3000, i.e. about 2.7 n^2 ns.
+
+The acceptance rule for this case is residual-based ("satisfies the relations
+that define it about as well as the CPU baseline's own result does"), so any
+method that solves the linear system at least as accurately as the float
+baseline is admissible. I aimed for a residual at the rounding floor of a
+float result (what you get by rounding the exact solution to float), which is
+3x-1000x below the baseline's residual for n > 128.
+
+## What I measured on this device before and while choosing the approach
+
+No profiler is available, so everything below comes from micro-benchmarks and
+from differential timing of the complete graph (adding or duplicating one
+kernel and looking at the median compute time).
+
+* fp64 is ~58x slower than fp32 in throughput; a double divide has ~250 ns
+  latency. Everything that is not O(n) or rare must be single precision.
+* A lone warp: float fma latency 2.1 ns, shared load ~7 ns, global load
+  ~12 ns when cache friendly and ~50 ns when strided, divergent branch
+  30-60 ns, float divide ~31 ns.
+* A barrier-delimited step of an in-block recursion costs ~80 ns fixed plus
+  ~58 ns per recursion step done between two barriers.
+* A kernel node inside a CUDA graph costs ~0.8 us for a trivial kernel and
+  1.5-3 us for the small reduction/update kernels of the iteration.
+* A device-side conditional node costs 6-10 us *even when not taken*; three
+  not-taken WHILE/IF nodes at the end of the graph cost ~25-30 us.
+* Graph launch + stream synchronise has a floor of ~10 us.
+
+Consequences: the recursion itself is bound by n sequential steps of
+~100 ns, so for n beyond a few hundred it has to be replaced by something
+with O(1) sequential depth; the number of kernels and of conditional nodes on
+the common path matters as much as arithmetic.
+
+## Approach (what is in `solution.cu`)
+
+Everything is one CUDA graph built in `pb_setup`; `pb_compute` is one
+`cudaGraphLaunch` plus a stream synchronise. `pb_upload` is one `cudaMemcpy`,
+`pb_download` one `cudaMemcpy`.
+
+1. **n = 1**: one trivial kernel.
+2. **n <= 128**: a bit-exact replica of the baseline recursion (`k_exact`:
+   explicitly rounded float operations, no FMA, inner product summed in the
+   baseline's order), branch-free, in one thread block. Statistics over 600
+   inputs per size showed that for n <= ~48 the float baseline's residual is
+   sometimes *smaller* than that of the correctly rounded exact solution (up
+   to 2.8x), so no "more accurate" method is reliably at least as good there;
+   reproducing the baseline is. Verified bitwise against the CPU code in
+   several thousand cases.
+3. **n >= 129**: direct phase + preconditioned conjugate gradients with
+   mixed precision:
+   * **Direct phase** (`k_direct`): the first K steps of the recursion in
+     Schur form (no inner products) in single precision inside one thread
+     block; one thread per element pair, branch-free, *two steps per barrier*
+     (each thread recomputes the one neighbouring value it needs, arrays are
+     double buffered, lane 0 derives the next two reflection coefficients).
+     K = n for n <= 512, otherwise K = 253. The result is the predictor
+     polynomial `a_m` (an AR(m) model of the data, m = 253 or n-1) and the
+     starting vector `y0 = (a_K, 0)`.
+   * **Preconditioner**: the exact inverse of the Toeplitz matrix of the AR(m)
+     model in Gohberg-Semencul form `(L_a L_a^T - L_z L_z^T)/beta`, i.e. two
+     banded FIR passes (`k_prec1/2`). They are register blocked (each lane
+     owns 32 taps x 32 outputs in a sliding window) because global loads are
+     the scarce resource; the second term of the second pass runs in separate
+     warps so that no warp does twice the work of the others.
+   * **Products with T**: for n <= 5120 direct O(n^2) sums, one warp per row
+     (single precision for the iteration, float-float for the anchor). For
+     larger n a cyclic convolution through an own FFT (cuFFT is not linked):
+     half-size complex transform of the packed real sequence, radix-8/16
+     passes in registers, and one fused shared-memory kernel that does the
+     last 9 forward stages, the multiplication by the symbol and the first 9
+     inverse stages.
+   * **Precision**: the iteration runs in single precision; the true residual
+     is evaluated at an **anchor** in float-float arithmetic (two floats,
+     ~48 bits, built from error-free transformations — native double is too
+     slow), where the single-precision correction is folded into the
+     float-float iterate. Residuals and corrections are scaled by a power of
+     two so that the iteration is independent of the magnitude of the data.
+   * **Acceptance** (on the device): max-norm and 2-norm of the residual
+     <= 2^-27 times the corresponding norms of y, either measured at an
+     anchor, or taken from the recursive residual when a computed bound on its
+     drift (8 eps ||T|| times the path length since the anchor) is below a
+     tenth of the tolerance.
+   * **Control flow**: a fixed prefix that is executed unconditionally —
+     (0 iterations, anchor, 1 iteration) for n <= 512; (2, anchor, 2) for
+     n <= 700; (3, anchor, 2) above — which is what inputs of the published
+     kind need; decisions inside the prefix only keep the books. Everything
+     else (more iterations, more anchors, restart after a detected divergence,
+     the fallback) sits behind a single IF node at the very end of the graph,
+     so the common path evaluates exactly one condition.
+   * **Fallback** (IF node): the complete recursion in double precision, one
+     small kernel per step, if the iteration fails (direct phase loses
+     positivity, stagnation, iteration cap, non-finite values). It is slow
+     (~1-2 us per step) but still far faster than the CPU and never taken for
+     the published input class. Verified separately by forcing it.
+
+Why it converges fast: for inputs whose reflection coefficients decay (the
+published generator: |k_i| < 0.5/(i+1)) the AR(253) model already matches the
+spectrum to a few per cent, so PCG contracts the residual by 20-40x per
+iteration and 5 iterations reach the float rounding floor. For other positive
+definite inputs it still converges, only slower (through the slow path); and
+ill-conditioned inputs end in the fallback.
+
+## Measured results
+
+Median `pb_compute` time in my development harness on this GPU, inputs drawn
+like the published generator (the official `check-example --self-check` phase
+times agree within a few us):
+
+| n | compute (us) | iterations | CPU baseline (2.7 n^2 ns) |
+|---|---|---|---|
+| 2 | 11 | – (exact replica) | ~0 |
+| 64 | 35 | – (exact replica) | 11 us |
+| 128 | 68 | – (exact replica) | 44 us |
+| 129 | 67 | 1 | 45 us |
+| 255 | 81 | 1 | 0.17 ms |
+| 400 | 102 | 1 | 0.43 ms |
+| 512 | 119 | 1 | 0.70 ms |
+| 1,000 | 167 | 5 | 2.7 ms |
+| 4,096 | 206 | 5 | 45 ms |
+| 8,192 | 239 | 5 | 0.18 s |
+| 16,384 | 252 | 5 | 0.71 s |
+| 100,000 | 324 | 5 | 27 s |
+| 300,000 | 591 | 5 | 4 min |
+
+For n <= ~150 the GPU cannot win: the launch/synchronise floor alone is 10 us
+and a bit-exact replica needs the same sequential chain of additions as the
+CPU, at ~3 ns per addition instead of ~1 ns.
+
+Accuracy (CPU check in long double, 47 inputs of several classes and sizes
+from 1 to 131073, plus 27 official self-checks): n <= 128 is bit-identical to
+the baseline; above, the candidate's residual equals the rounding floor
+(ratio 1.00-1.05) and is 3x-1000x below the baseline's. Forced-fallback runs
+are at the rounding floor as well. Repeated invocations (same and different
+data after one setup) are deterministic and independent of each other.
+
+History of the n = 100,000 time: 1075 us (all double) -> 547 -> 441 -> 420
+(float-float anchors) -> 393 (fused FFT middle) -> 380 (fixed prefix) -> 346
+(single IF) -> 334 (split second FIR pass) -> 324 (two-step direct phase).
+At n = 1000: 239 us before the last round of changes -> 167 us.
+
+## What else I tried
+
+* All-double PCG (first working version): 1075 us at n = 1e5.
+* Preconditioner order 125 / 253 / 509 / 1021: fewer iterations with larger m,
+  but the direct phase grows; flat optimum around 253.
+* A division-free direct phase: slower and less accurate. Computing the second
+  coefficient of a double step without waiting for the first division: ~1 us,
+  dropped because the kernel would no longer be bit-identical to the simple
+  one-step form (which is how I test it).
+* Radix-32 FFT passes: slower than radix-16 (loads are the bottleneck).
+* A statically scheduled graph with per-kernel "gates" instead of conditional
+  nodes: the gate reads cost as much as they saved.
+* Three or four conditional nodes at top level (the natural WHILE structure):
+  25-30 us slower than one IF. Replacing the last IF by a status word that
+  `pb_compute` reads on the host (then launching a second graph only if
+  needed): through a copy node it costs as much as the IF; written by a kernel
+  into mapped host memory it was 1.6 us in isolation but 4-17 us inside the
+  real graph, so it was dropped.
+* Letting every block recompute the global dot product instead of a separate
+  kernel: a gain only up to n ~ 4000 (kept there), a loss beyond.
+* Schedules (2,1), (3,1), (2,2), (3,2) of the fixed prefix per size range;
+  a miss (one more iteration through the slow path) costs ~45 us, so the
+  prefix is chosen such that misses are rare (about 1 in 15-20 seeds near
+  the range boundaries).
+* For the exact replica: two instead of three barriers per step, wide
+  shared-memory loads, branch-free form: together only ~10%.
+* A fixed constant for the single-precision drift: replaced by the computed
+  path-length bound after a slow-decay test case showed it is not universal.
+* Keeping vs restarting the CG direction at an anchor: kept only when the
+  true residual confirms the recursive one (otherwise it can diverge).
+
+## What I would do with more time
+
+* Direct phase: four steps per barrier (model: ~-20% of that phase, i.e.
+  ~5 us at n >= 513 and ~10 us at n = 512).
+* Fuse the direction update into the first FFT pass and the dot product into
+  the last one (two kernels less per iteration for n > 5120), and defer the
+  bookkeeping of the "soft" decisions (three kernels less per solve).
+* Make a miss of the fixed prefix cheaper (one unconditional extra iteration
+  behind the IF before the general loops; ~20 us less in that case).
+* Use the direct float-float residual product also for n up to ~16k together
+  with a single-precision symbol (saves the float-float FFTs there) — needs a
+  fresh look at the drift bound.
+* Understand the ~0.3 us fixed cost per step of the exact replica (n <= 128);
+  a single-warp variant without barriers should be ~20-40% faster.
+* Extend the "full direct phase" range beyond 512 with a 1024-tap FIR layout.

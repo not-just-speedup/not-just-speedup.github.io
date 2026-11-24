@@ -1,0 +1,26 @@
+# CUDA interval dynamic program
+
+I grouped the table into 32-by-32 tiles and processed tile diagonals in dependency order. The diagonal tiles use the baseline recurrence directly, with a warp reducing the splits of one interval. They retain the input diagonal and read the original subdiagonal for adjacent endpoints. Only cells strictly above the diagonal are written.
+
+## Off-diagonal tiles
+
+A legal split has at most one child in the current rectangle. Extending that child on the left and on the right involves disjoint ranges from the two completed diagonal tiles. The kernel precomputes the following integer weights, where `D` denotes a completed interval score.
+
+- For a prefix `[i,r)` of length at least two, the extension weight is `max(0,D[i,r-1])`. For length zero or one, it is zero. This preserves the baseline's first split position of `i+1`.
+- The best suffix that can be appended to a prefix of length at least two has weight `A(a,j) = max(D[a,j], max(0,D[a,a]) + A(a+1,j))`, with empty weight zero. Leading singletons may be skipped or consumed individually. Once the first piece has length at least two, its interval score can absorb the remaining pieces through ordinary splits and skips.
+
+Each thread starts with the best extension from the tile boundaries. It tests the original cell, the exterior splits and the score obtained by wrapping the interior. The block propagates every improvement to its containing intervals using the two extension weights. For a few improvements it visits them directly. For many, it factors the maximum into a row reduction and a column reduction. It repeats until every recurrence is satisfied. Extensions are legal derivations, and each wrap reads a shorter interval.
+
+The exterior split search retains a per-column list of right operands. If a right operand ties an internal split, its first piece can be merged into the outer left operand, moving the split to the right. A skipped endpoint can likewise be dropped or absorbed by the outer interval. These alternatives allow ties to be discarded. All potentially necessary operands are retained, including those spanning many tiles.
+
+Setup records the shape-dependent launches in a CUDA graph. Each compute call rebuilds the scores, extension weights and split lists from the current device buffers. All phase entry points synchronize their work.
+
+## Performance and checks
+
+I also tried dense tiled split reductions and a sparse wavefront that resolved each tile one cell diagonal at a time. Propagating tile-wide improvements gave shorter compute times on the random development inputs. The kernel benefits from short split lists and few rounds per tile. Dense lists can still give cubic work. The list allocation reserves quadratic space so its capacity covers the entire input domain.
+
+The public example matched exactly. I also compared complete buffers against the C baseline at 20 sizes from 1 through 513, using 12 input families and two consecutive compute calls per upload. Those tests included partial tiles, negative tables, dense lists of retained starts, and cases with a large subdiagonal.
+
+Larger random self-checks also matched exactly. The checker reported compute times of 0.35 ms at size 1023, 0.74 ms at 2032 and 1.22 ms at 3073. These timings are single-run development diagnostics.
+
+With more time I would measure the crossover between sparse and dense split reductions on large, deliberately dense cases, and test a smaller representation for the per-column lists.

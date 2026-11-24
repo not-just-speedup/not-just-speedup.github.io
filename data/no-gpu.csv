@@ -1,0 +1,31 @@
+agent,model,case,kernel,share_on_faulty,nogpu_state,nogpu_att,rerun_state,rerun_att,nogpu_active_h,rerun_active_h,nogpu_steps,rerun_steps,nogpu_measure,rerun_measure,nogpu_workaround_steps,nogpu_cuda_down_steps,nogpu_diagnose_steps,nogpu_notes_admit
+fable-claude-code,Fable 5.1,case-06,gemver,0.569,no candidate,,pass,0.402509390917151,1.53,2.05,265,282,4,43,2,19,13,device was in a reset-required state (CUDA error 46
+glm-5-2-opencode,GLM-5.2,case-06,gemver,1.0,no candidate,,pass,0.10489753140513662,0.85,0.99,319,102,0,6,6,11,42,GPU was unavailable
+glm-5-2-opencode,GLM-5.2,case-07,trmm,1.0,pass,0.7491933015494783,pass,0.46363648260106316,0.51,0.63,149,112,0,3,5,7,12,could not run `check-example` on the GPU
+qwen3-8-27b-opencode,Qwen3.8,case-07,trmm,1.0,pass,0.06974824499618659,fail,,0.62,1.54,229,201,0,3,0,7,16,could not run the GPU: in this sandbox the device
+glm-5-2-opencode,GLM-5.2,case-08,3mm,1.0,pass,0.83865112056399,pass,0.8409877203813914,0.26,0.35,80,82,0,12,0,8,10,cudaErrorDevicesUnavailable
+sonnet-5-5-claude-code,Sonnet 5.5,case-08,3mm,1.0,pass,0.31976506342970634,pass,5.117725248112114,4.52,5.51,1120,1204,0,117,0,2,18,GPU was unavailable
+fable-claude-code,Fable 5.1,case-09,gramschmidt,1.0,pass,0.23494529125579863,pass,0.22345241033061705,0.41,2.52,64,222,0,0,1,5,6,cudaErrorDevicesUnavailable
+deepseek-flash-reasoning-opencode,DS-V4F-R,case-11,atax,1.0,no candidate,,pass,0.287640434941322,,0.11,,70,,0,,,,cudaErrorDevicesUnavailable
+glm-5-2-opencode,GLM-5.2,case-11,atax,1.0,pass,0.2861441142020342,pass,0.29057280818488357,0.24,0.36,95,112,0,0,2,3,11,cudaErrorDevicesUnavailable
+deepseek-flash-reasoning-opencode,DS-V4F-R,case-12,2mm,1.0,pass,0.8256563763565992,pass,0.4394118257126049,1.16,0.7,307,244,0,1,0,15,40,cudaErrorDevicesUnavailable
+glm-5-2-opencode,GLM-5.2,case-12,2mm,1.0,pass,0.825730076214504,pass,0.8284350926137988,0.62,0.15,223,52,0,0,3,5,31,GPU-unavailable
+qwen3-8-27b-opencode,Qwen3.8,case-12,2mm,1.0,pass,0.8265417384471598,pass,0.8284192272838145,0.9,0.28,233,153,0,0,1,5,16,no GPU
+sonnet-5-5-claude-code,Sonnet 5.5,case-12,2mm,1.0,pass,0.82078026037425,pass,4.538436123439608,1.17,7.39,386,1319,0,202,0,6,18,cudaErrorDevicesUnavailable
+glm-5-2-opencode,GLM-5.2,case-14,fdtd-2d,1.0,pass,0.3262518395269873,pass,0.3279188196193257,0.83,2.52,216,246,0,57,10,20,25,cudaErrorDevicesUnavailable
+deepseek-flash-reasoning-opencode,DS-V4F-R,case-15,doitgen,1.0,pass,0.6885211836740133,pass,0.8023596005904927,0.18,0.08,233,63,0,0,2,9,35,CUDA_ERROR_DEVICE_UNAVAILABLE
+glm-5-2-opencode,GLM-5.2,case-15,doitgen,1.0,pass,0.803290964770736,pass,0.7735380815427139,0.57,1.07,105,77,0,0,0,2,6,no extra device-to-device
+glm-5-2-opencode,GLM-5.2,case-16,jacobi-2d,1.0,pass,0.18305518553540523,pass,0.18384746999751317,0.59,1.53,100,147,0,3,0,3,6,GPU in this sandbox is **unavailable
+sol-6-1-codex-cli,GPT-6.1 Sol,case-16,jacobi-2d,1.0,pass,0.770476823315992,pass,1.7280973771234007,0.33,0.24,200,366,0,0,0,0,6,no GPU
+deepseek-flash-reasoning-opencode,DS-V4F-R,case-17,nussinov,1.0,too-slow,,pass,0.03791000143663541,0.23,0.91,324,338,0,3,2,27,65,cudaErrorDevicesUnavailable
+glm-5-2-opencode,GLM-5.2,case-17,nussinov,1.0,pass,0.0011643886405103324,pass,0.02376806366148666,0.46,0.84,97,119,0,0,0,6,11,could not run on the GPU
+deepseek-flash-reasoning-opencode,DS-V4F-R,case-18,gemm,1.0,wrong-output,,pass,0.013952232107080192,0.14,0.06,311,59,0,0,3,14,70,no
+glm-5-2-opencode,GLM-5.2,case-18,gemm,1.0,pass,0.8953484884494739,pass,0.8934853198277941,0.46,0.23,133,87,0,0,2,6,20,without a GPU
+qwen3-8-27b-opencode,Qwen3.8,case-18,gemm,1.0,pass,0.8960013202459581,pass,0.8877869993295068,0.73,0.23,189,93,0,0,0,2,22,cudaErrorDevicesUnavailable
+fable-claude-code,Fable 5.1,case-19,seidel-2d,0.732,pass,0.14971435146629028,pass,1.1173815005418686,4.6,3.38,318,421,0,0,0,11,27,no
+glm-5-2-opencode,GLM-5.2,case-20,gesummv,0.775,pass,0.4850601086838072,pass,0.7102254700147758,0.54,0.3,164,62,0,0,2,7,18,No device
+qwen3-8-27b-opencode,Qwen3.8,case-21,symm,1.0,pass,0.013931457014994457,pass,0.013937398054375194,1.64,0.7,264,258,0,12,0,6,8,no
+sol-6-1-codex-cli,GPT-6.1 Sol,case-21,symm,1.0,pass,0.6053426345019727,pass,0.880372685831681,0.18,0.16,100,187,0,9,0,1,4,cudaFree(NULL)`) returned error 46
+fable-claude-code,Fable 5.1,case-23,deriche,1.0,pass,0.26121761089011064,pass,0.24502915546107057,1.89,2.2,220,258,0,20,1,8,7,CUDA-capable device(s) is/are busy or unavailable
+sol-6-1-codex-cli,GPT-6.1 Sol,case-24,adi,1.0,pass,0.02181944080489367,pass,1.1644603421762192,0.62,0.42,337,570,0,0,1,6,8,CUDA devices busy or unavailable
+fable-claude-code,Fable 5.1,case-25,syr2k,1.0,pass,0.7246835755118166,pass,1.7514547508212528,0.76,1.28,139,216,0,19,0,11,13,GPU unavailable

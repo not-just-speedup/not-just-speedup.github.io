@@ -1,0 +1,96 @@
+site_name: Not-Just-Speedup
+site_description: >-
+  An empirical study of how coding agents develop and optimize GPU HPC kernels:
+  post-verifier bugs, roofline attainment, algorithm changes, profiler
+  ablations, trace-analyzer reliability, and ongoing model evaluations.
+# site_url: https://not-just-speedup.github.io/
+
+# Keep repository links disabled while hosting privately on Cloudflare Pages.
+# Uncomment once the repository is public:
+# repo_url: https://github.com/not-just-speedup/not-just-speedup.github.io
+# repo_name: not-just-speedup
+
+copyright: Not-Just-Speedup
+
+theme:
+  name: material
+  language: en
+  font:
+    text: Source Serif 4
+    code: Inconsolata
+  palette:
+    scheme: default
+    primary: white
+    accent: custom
+  features:
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.top
+    - navigation.indexes
+    - toc.follow
+    - content.code.copy
+    - search.suggest
+    - search.highlight
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets:
+      check_paths: true
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+
+extra_css:
+  - stylesheets/extra.css
+
+extra_javascript:
+  - javascripts/mathjax.js
+  - javascripts/zoom.js
+  - https://unpkg.com/mathjax@3.2.2/es5/tex-mml-chtml.js
+
+nav:
+  - Kernel Performance: index.md
+  - Cost: cost.md
+  - Analysis:
+      - posts/index.md
+      - "1. Breaking the Roofline Bound": posts/01-breaking-the-roofline.md
+      - "2. Algorithm Changes and Reward Hacking": posts/02-algorithms-vs-hacking.md
+      - "3. Ranking and Wrap-Up": posts/03-ranking-and-wrap-up.md
+      - "4. Session Behavior": posts/04-session-behavior.md
+      - "5. Profiler and No-GPU Ablations": posts/05-profilers-and-no-gpu.md
+      - "6. Bug Analysis": posts/06-silent-gpu-bugs.md
+      - "7. Bugs Beyond the Verifier": posts/07-bugs-beyond-the-verifier.md
+      - "8. Analyzer Cross-Check: Claude against Codex": posts/08-analyzer-reliability.md
+  - Stencil Comparison: stencil.md
+  - Evaluation Framework: framework.md
+  - Roofline Model: roofline.md
+  - Data:
+          - code/index.md
+          - "adi: Sonnet 5.5": code/adi-sonnet-5-5.md
+          - "jacobi-1d: Gemini 4 Neon": code/jacobi-1d-gemini-4-neon.md
+          - "heat-3d: Gemini 4 Neon": code/heat-3d-gemini-4-neon.md
+          - "jacobi-2d: Gemini 4 Neon": code/jacobi-2d-gemini-4-neon.md
+          - "nussinov: GPT-6.2 Astra": code/nussinov-gpt-6-2-astra.md
+          - "durbin: Fable 5.2": code/durbin-fable-5-2.md
+          - "heat-3d: Fable 5.2 (time stepping)": code/heat-3d-fable-5-2.md
+          - "floyd-warshall: Sonnet 5.5 (earlier round, hacking)": code/floyd-warshall-sonnet-5-5-round-011.md
+          - "ludcmp: Opus 5.5 (earlier round, hacking)": code/ludcmp-opus-5-5-round-011.md

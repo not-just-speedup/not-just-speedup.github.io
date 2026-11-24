@@ -1,0 +1,89 @@
+# `heat-3d` (`case-04`) GPU Candidate Notes
+
+## 1. Approach Taken
+
+We implemented a three-path hybrid CUDA solver in `candidate/solution.cu` targeting the NVIDIA B300 (`sm_103`), honoring the exact 5-phase `pb-solve-v3` ABI and preserving both independent boundary faces of `buf0` and `buf1` bit-for-bit:
+
+### Path 0: Trivial Grid (`n1 <= 2`)
+- When `n1 <= 2`, the interior `1..n1-2` is empty and neither buffer is modified. `pb_compute` is an immediate no-op while `pb_upload`/`pb_download` perform exact H2D/D2H transfers.
+
+### Path 1: Direct Stencil Kernels (Small `n0`, Tiny `n1`, and OOM Fallback)
+- **Cooperative L2-Persistent Stencil (`n1 <= 128`)**: `stencil_coop_l2_kernel` runs all `n0` time-step pairs (`buf0 -> buf1 -> buf0`) inside a single `cudaLaunchCooperativeKernel` call using `cooperative_groups::this_grid().sync()`, keeping both grids resident in B300's 126.5 MB L2 cache with zero inter-step kernel launch overhead.
+- **2.5D Register-Streaming 1-Step Stencil (`n1 > 128`, small `n0`)**:
+  - `stencil_1step_2j_aligned4_kernel` (when `n1 % 4 == 0`) uses aligned 128-bit `float4` loads/stores while streaming `i` in registers across two adjacent `j`-rows (`2j × 4k` per thread), sharing middle `j`-neighbors and `i ± 1` planes in registers.
+  - `stencil_1step_2j_4k_kernel` handles arbitrary odd or non-multiple-of-4 extents with identical register reuse and no unaligned-`float4` performance cliff.
+  - When `n0 <= 64`, all `2 * n0` half-steps are captured into a single CUDA Graph in `pb_setup`.
+- **Exact Cancellation Form**: Both direct kernels evaluate `dx = (xp - 2c) + xm; dy = (yp - 2c) + ym; dz = (zp - 2c) + zm; fmaf(0.125f, (dx + dy) + dz, c)`, eliminating constant/linear-field rounding drift that occurs with the algebraically simplified `0.125 * sum_6 + 0.25 * c` form.
+
+### Path 2: Exact Analytic Harmonic + Mode-Truncated Spectral Solver (`O(1)` in `n0`)
+For moderate-to-large `n0` (`n0 >= 28` for `n1 > 256`, scaling up smoothly for smaller `n1`), we replace `2 * n0` time-marching passes with an exact spectral-harmonic closed-form solver whose runtime is **independent of `n0`** and works for **every** integer `n1 >= 3` (even, odd, or prime `L = n1 - 1`):
+
+1. **Coupled Harmonic Steady-State + Decay Decomposition**:
+   Let $m = n_1 - 2$, $L = n_1 - 1$, $A$ be the interior 7-point 3D stencil operator with homogeneous Dirichlet boundaries, and $b_0, b_1$ be the boundary-face source vectors from `buf0` and `buf1`. Defining the coupled fixed point $v_\infty = A u_\infty + b_0$, $u_\infty = A v_\infty + b_1$, we split into symmetric and antisymmetric components:
+   $$(I - A)s_\infty = \tfrac{1}{2}(b_0 + b_1), \qquad (I + A)d_\infty = \tfrac{1}{2}(b_0 - b_1), \qquad v_\infty = s_\infty + d_\infty, \quad u_\infty = s_\infty - d_\infty.$$
+   Then for every $n_0 \ge 1$:
+   $$v_{n_0} = v_\infty + A^{2 n_0 - 1}(u_0 - u_\infty), \qquad u_{n_0} = A v_{n_0} + b_1.$$
+   Because $A$ is exactly diagonalized by the 3D Discrete Sine Transform Type-I (DST-I) of size $m$ with eigenvalues $\lambda_{p,q,r} = 1 - \frac{1}{2}(\sin^2\frac{\pi(p+1)}{2L} + \sin^2\frac{\pi(q+1)}{2L} + \sin^2\frac{\pi(r+1)}{2L})$, both terms are computed without time stepping:
+   - **Part 1 (Decaying Transient)**: For $n_0 \ge 20$, all modes outside $[0, K)^3$ with $0.5 \sin^2\frac{\pi K}{2L} \ge 1 - e^{-28/(2n_0-1)}$ satisfy $|\lambda|^{2n_0-1} < 10^{-12}$ (and negative modes satisfy $|\lambda|^{2n_0-1} \le 0.5^{39} < 2 \times 10^{-12}$). Thus we only compute a mode-truncated forward/inverse 3D DST-I ($m^3 \to K^3 \to m^3$).
+   - **Part 2 (Harmonic Steady-State $v_\infty = v^{(0)} + v^{(1)} + v^{(2)}$)**: After 2D DST-I on all 12 boundary faces ($O(m^2)$), each axis contribution has a closed-form 1D hyperbolic profile along depth $x \in [1, m]$:
+     $$h_s(x) = \frac{\sinh(\gamma_{q,r}(L-x))}{\sinh(\gamma_{q,r} L)}, \qquad h_d(x) = (-1)^{x-1}\frac{\sinh(\eta_{q,r}(L-x))}{\sinh(\eta_{q,r} L)},$$
+     where $\cosh\gamma_{q,r} = 1 + 2(\sin^2\frac{\pi(q+1)}{2L} + \sin^2\frac{\pi(r+1)}{2L})$ and $\cosh\eta_{q,r} = 5 + \cos\frac{\pi(q+1)}{L} + \cos\frac{\pi(r+1)}{L}$. Since $h_s(x)$ decays exponentially with distance from the boundary $d = \min(x, L-x)$, deeper slices require exponentially fewer 2D modes $Q(d)$ (bucketed across 1.5× geometric levels $Q \in \{16, 24, 32, 48, 64, 96, 128, 192, 256, 384, 512, 768, 1024, 1536, m\}$ with cutoff $\tau = 24$), and $h_d(x) \lesssim 0.172^d$ vanishes beyond $d = 18$.
+   - **Finalization**: $v_{n_0}$ is accumulated in Double-Float (`float2`) to prevent cancellation when $v_\infty \approx -A^{2n_0-1}(u_0 - u_\infty)$, rounded to FP32 for `buf1`, and passed through one fused Double-Float 7-point stencil (`finalize_fast_v2_kernel`) reading `buf1`'s original boundary faces to produce `buf0`.
+
+2. **High-Precision Tensor Core Engine (Stacked Aligned Ozaki-BF16 + EO-DF64)**:
+   - Because B300 has 1.01 TFLOP/s native FP64 versus ~950 TFLOP/s BF16 Tensor Cores (and cuFFT is not linked), we compute high-precision DST-I matrix multiplications using **1-GEMM Stacked Aligned Ozaki-BF16**:
+     - Even/odd DST-I symmetry halves matrix dimensions ($h_{\text{sym}} = \lceil m/2\rceil$, $h_{\text{anti}} = \lfloor m/2\rfloor$) for both even and odd $m$.
+     - Both operands are decomposed into $S$ power-of-2 $\beta$-bit signed integers ($\beta = 7, S \in \{5, 6\}$ for $K \le 512$; $\beta = 6, S \in \{6, 7\}$ for $K > 512$), exact in `BF16` and exact in FP32 Tensor Core accumulation ($S \cdot K \cdot 2^{2(\beta-1)} < 2^{24}$), achieving 35–42 bits of precision (`<= 0.5 ULP` on FP32 outputs, 4×–10× more accurate than the CPU FP32 baseline).
+     - All $S$ output diagonals are stacked into a single padded (`align8`) `cublasGemmEx` call (`M`-first column-major layout) to avoid odd-dimension Tensor Core alignment cliffs (4×–6.5× speedup on odd `m`) and maximize Tensor Core utilization, with even and odd parity streams running concurrently across two streams inside a CUDA Graph.
+   - For deep harmonic buckets ($Q \in \{16, 24, 32\}$), where Ozaki intermediate buffers (`d_Cse`/`d_Cso`) would dominate HBM traffic, we fuse both 2D inverse stages directly into custom shared-memory-tiled Even/Odd Double-Float kernels (`fused_eo_df64_inv_r_to_TeTo_kernel` and `fused_eo_df64_q_accum_tiled_kernel`) with zero Ozaki HBM bloat.
+   - All shape-only DST-I matrices, harmonic decay tables, and CUDA Graphs are built on GPU during `pb_setup`, with an explicit `cudaMemGetInfo` memory guard that falls back cleanly to Path 1 if free HBM is insufficient.
+
+---
+
+## 2. Why We Chose This Approach
+
+- **Bandwidth Wall of Direct Stencils**: A 7-point 3D stencil has arithmetic intensity 0.875 FLOP/byte, making any time-marching GPU implementation HBM-bandwidth bound at ~2.7–4.1 seconds for `n1 = 1024, n0 = 1000` (17.2 TB minimum traffic at B300's 6.27 TB/s copy bandwidth) and ~33 seconds for `n1 = 2048, n0 = 1000`.
+- **Exactness + $O(1)$ Complexity in `n0`**: By combining the analytic harmonic decomposition with mode truncation, `pb_compute` becomes completely independent of `n0` (in fact *faster* as `n0` increases because $K$ shrinks!), works identically for prime/odd/non-power-of-2 grid extents without requiring FFT radix factorization, and preserves both independent boundary arrays bit-for-bit.
+- **Accuracy Margin**: The acceptance rule compares against an FP64 reference relative to the CPU FP32 baseline's worst deviation. Our 35–42 bit Ozaki-BF16 + Double-Float pipeline delivers 0.0–0.26× of the CPU baseline's error across uniform random, constant (`0.00` exact error), zero-boundary decaying, linear ramp, checkerboard, and opposing-boundary inputs.
+
+---
+
+## 3. What Else We Tried
+
+1. **Pure FP32 / `CUBLAS_COMPUTE_32F_EMULATED_16BFX9` 3D DST-I**: Rejected because 3D DST-I accumulates rounding noise proportional to $\|u_0\|$ that fails the acceptance rule by 12×–20× on exponentially decaying zero-boundary inputs and reaches ~29 `eps` on linear ramps.
+2. **cuBLAS Native FP64 Emulation (`CUBLAS_COMPUTE_64F_EMULATED_FIXEDPOINT`)**: Benchmarked at only 0.1–1.9 TFLOP/s on our rectangular DST shapes on `sm_103` (far slower than our custom stacked Ozaki-BF16 engine at ~58 effective 36-bit TFLOP/s).
+3. **2.5D Wavefront and 3D Cube Temporal Blocking (`T = 2, 4, 6, 8`) for Direct Stencils**: Benchmarked extensively on B300. Because B300 has an unusually high HBM-to-shared-memory bandwidth ratio (6.3 TB/s HBM vs ~38 TB/s smem) and 126.5 MB L2 cache, halo recomputation and synchronization overhead made 3D temporal blocking slower than streaming 1-step `2j × 4k` and cooperative L2 persistence (`stencil_coop_l2`).
+4. **Separate Per-Diagonal Ozaki GEMMs & Small L2-Shrunk Chunks**: Running $S$ separate GEMMs or shrinking `max_chunk_n` below ~16k starved B300's 148 SMs; stacking all $S$ diagonals into a single aligned GEMM with `max_chunk_n = 65536` and concurrent even/odd streams improved end-to-end spectral runtime by >3× (from 42.8 ms down to 11.5 ms at `512^3, n0=1000`).
+5. **EO-DF64 for Larger Harmonic Buckets (`Q = 64, 128`)**: Benchmarked `Q = 64` and `Q = 128` using fused DF64 kernels vs stacked Ozaki-BF16. Because DF64 FMA is FP32-compute-bound above `Q = 32`, Ozaki-BF16 Tensor Cores won cleanly for `Q >= 48`, establishing `Q <= 32` as the exact crossover.
+
+---
+
+## 4. Expected Performance
+
+Measured steady-state `pb_compute` times on NVIDIA B300 SXM6 AC (`sm_103`):
+
+| Shape (`n1`, `n0`) | Active Path | `pb_setup` | `pb_compute` | Max Error vs FP64 (vs CPU FP32) |
+|---|---|---:|---:|---|
+| `n1 = 5, n0 = 2` (public) | Path 1 (`coop_l2`) | ~5.8 ms | **0.018 ms** | `0.00` (exact) |
+| `n1 = 64, n0 = 60` | Path 1 (`coop_l2`) | 0.3 ms | **0.343 ms** | `<= 0.93×` CPU err |
+| `n1 = 120, n0 = 500` | Path 2 (Spectral) | 24.9 ms | **0.823 ms** | `1.49e-8` (~0.23× CPU) |
+| `n1 = 200, n0 = 1000` | Path 2 (Spectral) | 32.2 ms | **1.679 ms** | `1.49e-8` (~0.23× CPU) |
+| `n1 = 256, n0 = 200` | Path 2 (Spectral) | 38.1 ms | **2.411 ms** | `1.49e-8` (~0.23× CPU) |
+| `n1 = 512, n0 = 20` | Path 1 (`2j_aligned4` Graph) | 14.4 ms | **13.06 ms** | `3.43e-8` (~0.85× CPU) |
+| `n1 = 512, n0 = 100` | Path 2 (Spectral) | 41.4 ms | **14.97 ms** | `1.49e-8` (~0.23× CPU) |
+| `n1 = 512, n0 = 1000` | Path 2 (Spectral) | 33.1 ms | **11.48 ms** | `1.49e-8` (~0.22× CPU) |
+| `n1 = 513, n0 = 1000` (odd) | Path 2 (Spectral) | 29.2 ms | **11.43 ms** | `1.49e-8` (~0.22× CPU) |
+| `n1 = 1024, n0 = 20` | Path 1 (`2j_aligned4` Graph) | 91.0 ms | **86.02 ms** | `~0.85×` CPU err |
+| `n1 = 1024, n0 = 500` | Path 2 (Spectral) | 181.0 ms | **82.33 ms** | `0.00` CNST / `6.33e-8` RAMP |
+| `n1 = 1024, n0 = 1000` | Path 2 (Spectral) | 172.4 ms | **79.15 ms** | `0.00` CNST / `6.33e-8` RAMP |
+| `n1 = 2048, n0 = 1000` (64 GiB) | Path 2 (Spectral) | 1.36 s | **660.0 ms** | `5.96e-8` RAMP (0.5 ULP) |
+
+For large `n0`, Path 2 runs **34×–50× faster than HBM speed-of-light** for a direct stencil at `n0 = 1000`, and scales as $O(1)$ as `n0` grows further (verified up to `n0 = 2,000,000,000`).
+
+---
+
+## 5. What We Would Do With More Time
+
+1. **INT8 / FP8 Ozaki Slicing or Custom Blackwell `tcgen05` Epilogue Fusion**: Currently `ozaki_bucket_q_stacked_fused` writes full stacked FP32 GEMM outputs `d_Cse`/`d_Cso` to HBM and reads them back to combine and accumulate into `d_vdf`. Fusing the $S$-diagonal recombination and even/odd butterfly directly into a custom CUTLASS/MMA Tensor Core GEMM epilogue (or using Blackwell `tcgen05.mma` with INT8 slices for 2× higher peak throughput) would cut `v_inf` HBM traffic by ~3× and could push `1024^3, n0=1000` below 35 ms.
+2. **Fused 3-Axis Harmonic Accumulation for Deep Interior**: For the deep interior where $Q \le 32$ covers >50% of the grid volume, fusing the `axis=0`, `axis=1`, and `axis=2` evaluations into a single pass over `d_vdf` (reading `d_vdf` once instead of 3 times) would eliminate two full-volume 16-byte/element read-modify-write passes.
+3. **2-Step Cooperative Stencil for Medium Grids (`128 < n1 <= 200`)**: Adding a `2j × 4k` register-blocked cooperative L2 kernel would extend L2-persistent speedups to `n1 = 200`, improving the small-`n0` regime between `n1 = 128` and `200`.

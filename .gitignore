@@ -1,0 +1,25 @@
+# Static site build output
+site/
+
+# Local-only anonymity check: its pattern list names the authors
+scripts/check_anonymity.py
+
+# Python caches & virtualenvs
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# OS & editor junk
+.DS_Store
+.vscode/
+.idea/
+
+# Security belt-and-suspenders: never commit keys, secrets, or local env files
+id_*
+*.key
+*.pem
+*.p12
+*.pub
+.env
+.env.*

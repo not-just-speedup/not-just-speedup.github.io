@@ -1,0 +1,352 @@
+/* Paper-matched visual theme: pure white page canvas so vector SVG figures
+   blend seamlessly into the page, mint-green (#1E6F54 / #3EB489 / #B5EAD7)
+   accents, serif typography, and academic booktabs tables. */
+
+:root {
+  --njs-mint-dark: #1E6F54;
+  --njs-mint-main: #3EB489;
+  --njs-mint-mid: #7BCFAE;
+  --njs-mint-light: #B5EAD7;
+  --njs-mint-wash: #F2FBF7;
+}
+
+[data-md-color-scheme="default"] {
+  --md-default-bg-color: #ffffff;
+  --md-default-fg-color: #111827;
+  --md-default-fg-color--light: #374151;
+  --md-accent-fg-color: #1E6F54;
+  --md-typeset-a-color: #1E6F54;
+}
+
+/* Crisp white header and tabs with thin bottom rule and mint active indicator */
+.md-header,
+.md-tabs {
+  background-color: #ffffff;
+  color: #111827;
+  box-shadow: none;
+}
+
+.md-tabs {
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.md-tabs__link--active,
+.md-tabs__link:hover,
+.md-nav__link--active,
+.md-nav__link:hover {
+  color: var(--njs-mint-dark) !important;
+}
+
+.md-footer,
+.md-footer-meta {
+  background-color: #ffffff;
+  color: #4b5563;
+  border-top: 1px solid #e5e7eb;
+}
+
+.md-footer-meta a,
+.md-footer__link {
+  color: #111827;
+}
+
+.md-grid {
+  max-width: 78rem;
+}
+
+.md-typeset {
+  font-size: 0.90rem;
+  line-height: 1.65;
+}
+
+/* Keep prose measure comfortable on full-width pages while letting figures expand */
+.njs-home-prose {
+  max-width: 52rem;
+}
+
+.md-typeset h1,
+.md-typeset h2,
+.md-typeset h3 {
+  font-weight: 700;
+  color: #000000;
+  letter-spacing: -0.01em;
+}
+
+.md-typeset h2 {
+  margin-top: 1.9em;
+  padding-bottom: 0.2rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+/* Borderless figure container: SVG sits directly on the pure white page */
+figure.njs-fig {
+  margin: 1.5rem 0;
+  padding: 0.25rem 0;
+  border: none;
+  background: #ffffff;
+  text-align: center;
+}
+
+figure.njs-fig.njs-wide {
+  margin: 1.8rem 0;
+  width: 100%;
+}
+
+figure.njs-fig.njs-mid img {
+  width: min(100%, 720px);
+  max-width: 100%;
+}
+
+figure.njs-fig.njs-wide img {
+  width: 100%;
+  max-width: 100%;
+}
+
+figure.njs-fig img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+  cursor: zoom-in;
+}
+
+.njs-fig-tools {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+}
+
+.njs-fig-btn {
+  font-family: inherit;
+  font-size: 0.72rem;
+  line-height: 1.2;
+  padding: 0.22rem 0.55rem;
+  border: 1px solid #d1d5db;
+  border-radius: 2px;
+  background: #ffffff;
+  color: #1E6F54 !important;
+  text-decoration: none !important;
+  cursor: pointer;
+}
+
+.njs-fig-btn:hover {
+  border-color: #1E6F54;
+  background: #F2FBF7;
+}
+
+figure.njs-fig figcaption {
+  margin-top: 0.45rem;
+  font-size: 0.80rem;
+  line-height: 1.48;
+  color: #1f2937;
+  text-align: left;
+}
+
+/* Fullscreen pure-white lightbox */
+.njs-lightbox {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: #ffffff;
+  flex-direction: column;
+}
+
+.njs-lightbox.is-open {
+  display: flex;
+}
+
+.njs-lb-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.65rem 1.2rem;
+  border-bottom: 1px solid #e5e7eb;
+  background: #ffffff;
+  font-size: 0.82rem;
+}
+
+.njs-lb-title {
+  color: #111827;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.njs-lb-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-shrink: 0;
+}
+
+.njs-lb-actions button,
+.njs-lb-actions a {
+  font-family: inherit;
+  font-size: 0.78rem;
+  padding: 0.28rem 0.65rem;
+  border: 1px solid #000000;
+  border-radius: 2px;
+  background: #ffffff;
+  color: #000000;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.njs-lb-actions button:hover,
+.njs-lb-actions a:hover {
+  background: #F2FBF7;
+  border-color: #1E6F54;
+  color: #1E6F54;
+}
+
+.njs-lb-scale {
+  min-width: 3rem;
+  text-align: center;
+  font-size: 0.78rem;
+  color: #374151;
+}
+
+.njs-lb-stage {
+  flex: 1;
+  overflow: auto;
+  padding: 1.2rem;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  background: #ffffff;
+}
+
+.njs-lb-stage img {
+  height: auto;
+  display: block;
+}
+
+/* Summary metric boxes: mint tint + thin black border (matches paper overview diagram) */
+.njs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
+  gap: 0.75rem;
+  margin: 1.1rem 0 1.5rem;
+}
+
+.njs-card {
+  border: 1px solid #000000;
+  border-radius: 2px;
+  padding: 0.75rem 0.9rem;
+  background: var(--njs-mint-wash);
+  color: #000000;
+}
+
+.njs-card .njs-num {
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--njs-mint-dark);
+}
+
+.njs-card .njs-label {
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
+  line-height: 1.35;
+}
+
+/* Booktabs-style academic tables */
+.md-typeset table:not([class]) {
+  font-size: 0.79rem;
+  border-top: 1.5px solid #000000;
+  border-bottom: 1.5px solid #000000;
+  border-left: none;
+  border-right: none;
+  box-shadow: none;
+}
+
+.md-typeset table:not([class]) th {
+  border-bottom: 1px solid #000000;
+  background: var(--njs-mint-wash);
+  color: #000000;
+  font-weight: 700;
+}
+
+.md-typeset pre > code {
+  border: 1px solid #e5e7eb;
+}
+
+/* Compact tables with a full-screen zoom (zoom.js: "Expand table") */
+div.njs-table {
+  margin: 1rem 0 0.4rem;
+}
+div.njs-table .md-typeset__table,
+div.njs-table table:not([class]) {
+  font-size: 0.68rem;
+}
+div.njs-table table:not([class]) td,
+div.njs-table table:not([class]) th {
+  padding: 0.25em 0.6em;
+}
+.njs-lb-table {
+  display: none;
+  background: #ffffff;
+  padding: 1rem;
+  overflow: auto;
+  max-width: 96vw;
+}
+.njs-lb-table table {
+  border-collapse: collapse;
+}
+.njs-lb-table td,
+.njs-lb-table th {
+  padding: 0.35em 0.9em;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+/* Session matrix (session-matrix.js) */
+.njs-views { display: flex; flex-wrap: wrap; gap: 6px; margin: 0.6rem 0; }
+.njs-views button { font: inherit; font-size: 0.68rem; padding: 0.2rem 0.55rem; border: 1px solid #d1d5db; background: #fff; border-radius: 3px; cursor: pointer; }
+.njs-views button[aria-pressed="true"] { border-color: #1E6F54; color: #1E6F54; font-weight: 600; }
+.njs-mlegend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 0.66rem; color: #374151; align-items: center; }
+.njs-mlegend .sw { display: inline-block; width: 13px; height: 11px; border-radius: 2px; vertical-align: -1px; margin-right: 4px; border: 1px solid rgba(0,0,0,.12); }
+.njs-mlegend .dotsw { background: #fff; position: relative; }
+.njs-mlegend .dotsw::after { content: ""; position: absolute; top: 1px; right: 1px; width: 5px; height: 5px; border-radius: 50%; background: #C2410C; }
+.njs-mlegend .trisw { background: #fff; border-left: 6px solid #C2410C; }
+.njs-mnote { font-size: 0.66rem; color: #6b7280; margin: 0.3rem 0 0.5rem; }
+.njs-mwrap { overflow-x: auto; border: 1px solid #e5e7eb; border-radius: 4px; padding: 4px; }
+table.njs-matrix { border-collapse: separate; border-spacing: 2px; font-size: 0.6rem; }
+.md-typeset table.njs-matrix:not([class*="md"]) { display: table; box-shadow: none; border: 0; }
+table.njs-matrix th, table.njs-matrix td { padding: 0 !important; border: 0 !important; background: none !important; white-space: nowrap; }
+table.njs-matrix th.fw { text-align: center; font-weight: 600; border-bottom: 1px solid #9ca3af !important; padding-bottom: 2px !important; }
+table.njs-matrix th.m { height: 76px; vertical-align: bottom; font-weight: 500; }
+table.njs-matrix th.m span { writing-mode: vertical-rl; transform: rotate(180deg); display: inline-block; }
+table.njs-matrix .sep { padding-left: 6px !important; }
+table.njs-matrix td.k { padding-right: 6px !important; text-align: right; color: #374151; font-family: var(--md-code-font-family); }
+table.njs-matrix td.c { font-weight: 600; color: #1E6F54; padding-right: 4px !important; }
+table.njs-matrix tr.cat td { padding-top: 4px !important; }
+table.njs-matrix .cell { width: 22px; height: 16px; display: block; border-radius: 2px; position: relative; cursor: default; }
+table.njs-matrix .cell i { position: absolute; inset: 0; display: grid; place-items: center; font-style: normal; font-size: 0.5rem; font-variant-numeric: tabular-nums; }
+table.njs-matrix .cell .dot { position: absolute; top: 2px; right: 2px; width: 5px; height: 5px; border-radius: 50%; }
+table.njs-matrix .cell .tri { position: absolute; left: 0; bottom: 0; width: 0; height: 0; border-style: solid; border-width: 7px 0 0 7px; }
+table.njs-emx .cell { width: 30px; height: 17px; }
+table.njs-emx th.m { height: 118px; }
+
+/* Stacked error bars (errors-bars.js) */
+.njs-ebars { border: 1px solid #e5e7eb; border-radius: 4px; padding: 6px 10px; margin-top: 6px; font-size: 0.66rem; }
+.njs-ebars .eh, .njs-ebars .er { display: grid; grid-template-columns: 9.5rem 1fr 8rem; gap: 8px; align-items: center; }
+.njs-ebars .eh { color: #6b7280; font-weight: 600; margin-bottom: 2px; }
+.njs-ebars .efw { font-weight: 600; color: #1E6F54; margin-top: 6px; border-top: 1px solid #e5e7eb; padding-top: 3px; }
+.njs-ebars .en { text-align: right; color: #374151; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.njs-ebars .eb { display: flex; align-items: center; height: 13px; }
+.njs-ebars .eb i { display: block; height: 100%; border-right: 1px solid #fff; }
+.njs-ebars .eb b { font-weight: 500; margin-left: 5px; font-variant-numeric: tabular-nums; color: #374151; }
+.njs-ebars .ef { color: #C2410C; letter-spacing: 1px; white-space: nowrap; overflow: hidden; }
+.njs-ebars .et { border-top: 1px solid #9ca3af; margin-top: 6px; padding-top: 4px; font-weight: 600; }
+
+/* Observations on the home page: numbers in green circles, like the paper's circled observations */
+.md-typeset .njs-obs ol { list-style: none; counter-reset: obs; margin-left: 0; padding-left: 0; }
+.md-typeset .njs-obs ol > li { counter-increment: obs; position: relative; margin: 0 0 0.7em 0; padding-left: 2.3em; }
+.md-typeset .njs-obs ol > li::before {
+  content: counter(obs); position: absolute; left: 0; top: 0.12em;
+  width: 1.6em; height: 1.6em; border-radius: 50%; background: #1E6F54; color: #fff;
+  font-size: 0.82em; font-weight: 600; line-height: 1.6em; text-align: center; font-variant-numeric: tabular-nums;
+}

@@ -1,0 +1,211 @@
+agent,model,case,kernel,forbidden_state,stated_state,forbidden_att,stated_att,profiler_runs,profiler_steps_page,preprocessed,forbidden_usd,stated_usd
+kimi-opencode,Kimi K3,case-02,bicg,pass,pass,0.2941338435885092,0.36958187268403797,11,12,round-013-long-x3.kimi-opencode.case-02,4.332,4.1973
+sol-6-1-codex-cli,GPT-6.1S,case-13,correlation,pass,pass,0.013900159732119305,0.438916576991919,0,0,round-013-long-main.sol-6-1-codex-cli.case-13,1.1125,0.9121
+glm-5-2-opencode,GLM-5.2,case-24,adi,pass,pass,0.027969104849950258,0.030661555837330944,0,0,round-013-long-x3.glm-5-2-opencode.case-24,4.3878,1.6553
+sol-6-1-codex-cli,GPT-6.1S,case-03,covariance,pass,pass,0.44296427139564715,0.7757796326750279,0,0,round-013-long-main.sol-6-1-codex-cli.case-03,0.7908,0.9181
+opus-5-5-claude-code,Opus 5.5,case-25,syr2k,pass,pass,5.860109232949952,4.625193918761295,12,13,round-013-long-claude.opus-5-5-claude-code.case-25,26.9226,35.8507
+opus-5-5-claude-code,Opus 5.5,case-07,trmm,pass,pass,2.234637479353852,5.564734662896224,8,9,round-013-long-claude.opus-5-5-claude-code.case-07,39.5485,28.6336
+kimi-opencode,Kimi K3,case-06,gemver,pass,accepted,0.2562021008839463,0.20643047653994762,13,14,round-013-long-main.kimi-opencode.case-06,4.8141,10.0127
+glm-5-2-opencode,GLM-5.2,case-18,gemm,pass,pass,0.8942565359606102,0.8941278134140836,0,0,round-013-long-x3.glm-5-2-opencode.case-18,0.542,1.2552
+nemotron-3-ultra-opencode,Nemo 3U,case-22,trisolv,fail,fail,,,0,0,round-013-long-main.nemotron-3-ultra-opencode.case-22,,
+nemotron-3-ultra-opencode,Nemo 3U,case-20,gesummv,pass,pass,0.081653675408415,0.07439752293201808,0,0,round-013-long-main.nemotron-3-ultra-opencode.case-20,,
+opus-5-5-claude-code,Opus 5.5,case-02,bicg,pass,pass,0.8329910152006741,0.8400158963170106,11,12,round-013-long-x3.opus-5-5-claude-code.case-02,49.3031,34.3425
+nemotron-3-5-super-opencode,Nemo 3.5S,case-15,doitgen,pass,pass,0.10043275551039924,0.8020154480513852,0,0,round-013-long-main.nemotron-3-5-super-opencode.case-15,,
+opus-5-5-claude-code,Opus 5.5,case-27,cholesky,pass,pass,0.8885764234845154,0.3533414492827667,5,6,round-013-long-claude.opus-5-5-claude-code.case-27,49.9669,28.2833
+glm-5-2-opencode,GLM-5.2,case-21,symm,pass,pass,0.6057740772790609,0.87591481683841,0,0,round-013-long-main.glm-5-2-opencode.case-21,0.7692,2.0845
+nemotron-3-ultra-opencode,Nemo 3U,case-11,atax,pass,pass,0.05994997642903223,0.05481931122542106,0,0,round-013-long-main.nemotron-3-ultra-opencode.case-11,,
+nemotron-3-ultra-opencode,Nemo 3U,case-30,mvt,pass,pass,0.019054708769682502,0.05131190790380998,0,0,round-013-long-main.nemotron-3-ultra-opencode.case-30,,
+kimi-opencode,Kimi K3,case-30,mvt,pass,pass,0.16393490138938072,0.6712573575508634,9,10,round-013-long-main.kimi-opencode.case-30,4.4621,6.5597
+sol-6-1-codex-cli,GPT-6.1S,case-25,syr2k,pass,pass,0.23458218625907412,0.2796520859133387,0,0,round-013-long-main.sol-6-1-codex-cli.case-25,2.4002,2.6529
+kimi-opencode,Kimi K3,case-16,jacobi-2d,pass,pass,1.0848172998705263,1.2795976455109053,12,13,round-013-long-main.kimi-opencode.case-16,7.8528,27.9852
+sol-6-1-codex-cli,GPT-6.1S,case-10,durbin,pass,pass,0.00043853901760866626,0.0004053424166334866,1,2,round-013-long-main.sol-6-1-codex-cli.case-10,1.8386,2.7197
+nemotron-3-ultra-opencode,Nemo 3U,case-09,gramschmidt,fail,fail,,,0,0,round-013-long-main.nemotron-3-ultra-opencode.case-09,,
+sol-6-1-codex-cli,GPT-6.1S,case-17,nussinov,pass,pass,0.18230157486083626,0.2718256940475689,0,0,round-013-long-main.sol-6-1-codex-cli.case-17,0.9293,1.3094
+nemotron-3-ultra-opencode,Nemo 3U,case-06,gemver,pass,pass,0.0383627122580988,0.03836210374842758,0,0,round-013-long-main.nemotron-3-ultra-opencode.case-06,,
+kimi-opencode,Kimi K3,case-03,covariance,pass,pass,0.46415936060680246,0.8041254410251603,10,10,round-013-long-main.kimi-opencode.case-03,3.0034,2.8629
+nemotron-3-5-super-opencode,Nemo 3.5S,case-27,cholesky,fail,fail,,,0,0,round-013-long-main.nemotron-3-5-super-opencode.case-27,,
+nemotron-3-5-super-opencode,Nemo 3.5S,case-25,syr2k,pass,pass,0.0328432780117071,0.016681835498313254,0,0,round-013-long-main.nemotron-3-5-super-opencode.case-25,,
+nemotron-3-5-super-opencode,Nemo 3.5S,case-17,nussinov,pass,fail,0.0019696903623958894,,0,0,round-013-long-main.nemotron-3-5-super-opencode.case-17,,
+sol-6-1-codex-cli,GPT-6.1S,case-12,2mm,pass,pass,1.9994949540756006,0.827632227159811,0,0,round-013-long-main.sol-6-1-codex-cli.case-12,1.1582,1.3713
+nemotron-3-5-super-opencode,Nemo 3.5S,case-07,trmm,pass,pass,0.0637908836678924,0.05540551440530305,0,0,round-013-long-main.nemotron-3-5-super-opencode.case-07,,
+glm-5-2-opencode,GLM-5.2,case-25,syr2k,pass,pass,0.8750354389227804,0.7265262829401107,0,0,round-013-long-main.glm-5-2-opencode.case-25,1.1705,0.6735
+deepseek-flash-reasoning-opencode,DS-V4F-R,case-11,atax,pass,pass,0.2896335441567079,0.04397679588035036,54,56,round-013-long-main.deepseek-flash-reasoning-opencode.case-11,0.1131,0.6545
+glm-5-2-opencode,GLM-5.2,case-27,cholesky,pass,pass,0.2813368449884365,0.27710608734543635,0,0,round-013-long-main.glm-5-2-opencode.case-27,0.8245,1.1962
+deepseek-flash-reasoning-opencode,DS-V4F-R,case-22,trisolv,pass,pass,0.0473631364825103,0.0005139661686368358,5,7,round-013-long-main.deepseek-flash-reasoning-opencode.case-22,0.3835,0.6353
+kimi-opencode,Kimi K3,case-11,atax,pass,accepted,0.28926491518370284,0.23736814774071585,9,10,round-013-long-main.kimi-opencode.case-11,0.7296,8.366
+kimi-opencode,Kimi K3,case-14,fdtd-2d,pass,pass,0.5084932466126288,0.38616127246552784,0,0,round-013-long-main.kimi-opencode.case-14,3.1626,6.948
+glm-5-2-opencode,GLM-5.2,case-03,covariance,pass,pass,0.7824438680429412,0.790453247259399,0,0,round-013-long-main.glm-5-2-opencode.case-03,2.6815,1.0568
+glm-5-2-opencode,GLM-5.2,case-07,trmm,pass,pass,0.46222234547234464,0.4502553107645356,0,0,round-013-long-main.glm-5-2-opencode.case-07,1.3974,1.8759
+glm-5-2-opencode,GLM-5.2,case-05,ludcmp,pass,pass,0.0628341393541111,0.28293240169439693,0,0,round-013-long-c05.glm-5-2-opencode.case-05,4.7673,0.8569
+sol-6-1-codex-cli,GPT-6.1S,case-15,doitgen,pass,pass,0.8015809065072037,0.8005637690330769,0,0,round-013-long-main.sol-6-1-codex-cli.case-15,0.7445,1.0095
+nemotron-3-ultra-opencode,Nemo 3U,case-14,fdtd-2d,fail,pass,,0.2756954487649477,0,0,round-013-long-main.nemotron-3-ultra-opencode.case-14,,
+kimi-opencode,Kimi K3,case-28,lu,pass,pass,0.4153025494884147,0.48219612754178803,8,9,round-013-long-main.kimi-opencode.case-28,14.5545,6.3278
+sol-6-1-codex-cli,GPT-6.1S,case-07,trmm,pass,pass,0.1601423474589973,0.7187704027531575,0,0,round-013-long-main.sol-6-1-codex-cli.case-07,0.8935,1.4288
+nemotron-3-5-super-opencode,Nemo 3.5S,case-29,jacobi-1d,pass,pass,0.36488924905675657,0.3123494384341692,0,0,round-013-long-main.nemotron-3-5-super-opencode.case-29,,
+sol-6-1-codex-cli,GPT-6.1S,case-21,symm,pass,pass,0.8799324059903949,2.1859222858567238,0,0,round-013-long-main.sol-6-1-codex-cli.case-21,0.9589,1.4751
+deepseek-flash-reasoning-opencode,DS-V4F-R,case-06,gemver,pass,pass,0.05198006935252126,0.11362909632638621,62,67,round-013-long-main.deepseek-flash-reasoning-opencode.case-06,0.4812,0.5998
+kimi-opencode,Kimi K3,case-01,floyd-warshall,pass,pass,0.49399529482748145,0.6416382839395647,4,5,round-013-long-c01.kimi-opencode.case-01,3.9183,1.8798
+opus-5-5-claude-code,Opus 5.5,case-12,2mm,pass,pass,5.948265017601539,4.459009411947267,31,32,round-013-long-claude.opus-5-5-claude-code.case-12,59.2782,41.3822
+glm-5-2-opencode,GLM-5.2,case-23,deriche,pass,pass,0.012544821956163762,0.0035835328168592694,0,0,round-013-long-main.glm-5-2-opencode.case-23,0.7765,0.5194
+deepseek-flash-reasoning-opencode,DS-V4F-R,case-09,gramschmidt,pass,pass,0.007075500451991474,0.012036593361727781,7,8,round-013-long-main.deepseek-flash-reasoning-opencode.case-09,0.3344,0.441
+deepseek-flash-reasoning-opencode,DS-V4F-R,case-16,jacobi-2d,pass,pass,0.45565885935755507,0.3273456564356436,17,22,round-013-long-main.deepseek-flash-reasoning-opencode.case-16,0.5969,0.4091
+sol-6-1-codex-cli,GPT-6.1S,case-27,cholesky,pass,pass,0.2782667663549242,0.2808466642897863,0,0,round-013-long-main.sol-6-1-codex-cli.case-27,1.7969,1.3739
+opus-5-5-claude-code,Opus 5.5,case-29,jacobi-1d,pass,pass,9.203672080087456,9.900094752387764,12,13,round-013-long-claude.opus-5-5-claude-code.case-29,33.8471,39.87
+nemotron-3-5-super-opencode,Nemo 3.5S,case-21,symm,pass,pass,0.03714561027111364,0.87129690848336,0,0,round-013-long-main.nemotron-3-5-super-opencode.case-21,,
+glm-5-2-opencode,GLM-5.2,case-10,durbin,pass,pass,0.00014034821268026808,0.00020140591838630444,0,0,round-013-long-main.glm-5-2-opencode.case-10,1.4968,1.8561
+deepseek-flash-reasoning-opencode,DS-V4F-R,case-13,correlation,pass,pass,0.013894536857162987,0.4124831112700682,0,0,round-013-long-main.deepseek-flash-reasoning-opencode.case-13,0.2572,0.4646
+nemotron-3-5-super-opencode,Nemo 3.5S,case-03,covariance,pass,pass,0.0028099857179808897,0.0014073138679543192,0,0,round-013-long-main.nemotron-3-5-super-opencode.case-03,,
+glm-5-2-opencode,GLM-5.2,case-13,correlation,pass,pass,0.7853336552317336,0.4506331486107511,0,0,round-013-long-main.glm-5-2-opencode.case-13,1.4862,1.5564
+deepseek-flash-reasoning-opencode,DS-V4F-R,case-30,mvt,accepted,pass,0.3020641314370827,0.03623552314362691,0,0,round-013-long-main.deepseek-flash-reasoning-opencode.case-30,0.3661,0.0932
+opus-5-5-claude-code,Opus 5.5,case-21,symm,pass,pass,5.446853125079656,6.138053265029405,1,17,round-013-long-claude.opus-5-5-claude-code.case-21,36.0622,34.6596
+nemotron-3-5-super-opencode,Nemo 3.5S,case-24,adi,pass,pass,0.01941861590999012,0.019602042839336347,0,0,round-013-long-x3.nemotron-3-5-super-opencode.case-24,,
+sol-6-1-codex-cli,GPT-6.1S,case-05,ludcmp,pass,pass,0.5357519192559327,0.225381519061877,0,0,round-013-long-c05.sol-6-1-codex-cli.case-05,1.5521,1.0501
+nemotron-3-5-super-opencode,Nemo 3.5S,case-01,floyd-warshall,pass,pass,0.015413297890955312,0.015485159569949291,0,0,round-013-long-c01.nemotron-3-5-super-opencode.case-01,,
+deepseek-flash-reasoning-opencode,DS-V4F-R,case-20,gesummv,fail,pass,,0.47189728890984045,0,0,round-013-long-main.deepseek-flash-reasoning-opencode.case-20,0.2566,0.0486
+nemotron-3-5-super-opencode,Nemo 3.5S,case-02,bicg,pass,pass,0.04074000903087738,0.03852018822887285,0,0,round-013-long-x3.nemotron-3-5-super-opencode.case-02,,
+glm-5-2-opencode,GLM-5.2,case-29,jacobi-1d,pass,pass,0.36827325511956205,0.28998917960203385,0,0,round-013-long-main.glm-5-2-opencode.case-29,4.0521,0.5684
+glm-5-2-opencode,GLM-5.2,case-02,bicg,pass,pass,0.30113223035809694,0.6022507111506125,0,0,round-013-long-x3.glm-5-2-opencode.case-02,1.0238,1.8643
+nemotron-3-5-super-opencode,Nemo 3.5S,case-13,correlation,pass,pass,0.004940213271301242,0.004757837657903658,0,0,round-013-long-main.nemotron-3-5-super-opencode.case-13,,
+sol-6-1-codex-cli,GPT-6.1S,case-23,deriche,pass,pass,0.018761128060098012,0.028538180613520654,0,0,round-013-long-main.sol-6-1-codex-cli.case-23,1.2968,2.2315
+sol-6-1-codex-cli,GPT-6.1S,case-19,seidel-2d,pass,pass,0.11728287367614397,0.1885856778126212,0,2,round-013-long-main.sol-6-1-codex-cli.case-19,0.9806,2.4486
+glm-5-2-opencode,GLM-5.2,case-12,2mm,pass,pass,0.8270726203463461,0.8272380901011822,0,0,round-013-long-main.glm-5-2-opencode.case-12,0.367,0.5061
+nemotron-3-ultra-opencode,Nemo 3U,case-03,covariance,pass,pass,0.07237846631162145,0.0018858703830847302,0,0,round-013-long-main.nemotron-3-ultra-opencode.case-03,,
+deepseek-flash-reasoning-opencode,DS-V4F-R,case-02,bicg,pass,pass,0.08932065864424069,0.19270920509441913,13,16,round-013-long-x3.deepseek-flash-reasoning-opencode.case-02,0.2177,0.3291
+glm-5-2-opencode,GLM-5.2,case-15,doitgen,pass,pass,0.7750877637269615,0.7745901847353345,0,0,round-013-long-main.glm-5-2-opencode.case-15,0.8272,1.5008
+sol-6-1-codex-cli,GPT-6.1S,case-02,bicg,pass,pass,0.2033839460807169,0.1409164475255876,0,0,round-013-long-x3.sol-6-1-codex-cli.case-02,0.9518,1.2473
+kimi-opencode,Kimi K3,case-22,trisolv,pass,pass,0.04720295877324793,0.04726694603630198,0,0,round-013-long-main.kimi-opencode.case-22,15.874,0.2746
+opus-5-5-claude-code,Opus 5.5,case-15,doitgen,pass,pass,2.7311815549657825,2.3602417258506816,4,6,round-013-long-claude.opus-5-5-claude-code.case-15,47.3927,37.7776
+kimi-opencode,Kimi K3,case-05,ludcmp,pass,pass,0.28273217214047314,0.288561836802265,0,0,round-013-long-c05.kimi-opencode.case-05,1.0937,2.0619
+opus-5-5-claude-code,Opus 5.5,case-19,seidel-2d,pass,accepted,1.5331839974766879,1.6963246612502259,17,18,round-013-long-claude.opus-5-5-claude-code.case-19,65.7715,36.4373
+glm-5-2-opencode,GLM-5.2,case-01,floyd-warshall,pass,pass,0.36321152858952216,0.23502139432043911,0,0,round-013-long-c01.glm-5-2-opencode.case-01,1.2977,1.9766
+nemotron-3-ultra-opencode,Nemo 3U,case-26,syrk,pass,pass,0.03139770653687253,0.03160808305254669,0,0,round-013-long-main.nemotron-3-ultra-opencode.case-26,,
+nemotron-3-5-super-opencode,Nemo 3.5S,case-23,deriche,pass,pass,0.004545732854724891,0.004635108880490057,0,0,round-013-long-main.nemotron-3-5-super-opencode.case-23,,
+opus-5-5-claude-code,Opus 5.5,case-03,covariance,pass,pass,5.382758259251141,5.177811467782287,25,27,round-013-long-claude.opus-5-5-claude-code.case-03,36.7464,35.359
+opus-5-5-claude-code,Opus 5.5,case-10,durbin,pass,pass,0.02878941050542466,0.0031207403563767227,18,21,round-013-long-claude.opus-5-5-claude-code.case-10,74.7436,59.8398
+kimi-opencode,Kimi K3,case-09,gramschmidt,pass,pass,0.20632572496709825,0.200133293857574,4,5,round-013-long-main.kimi-opencode.case-09,6.953,11.5468
+deepseek-flash-reasoning-opencode,DS-V4F-R,case-26,syrk,pass,pass,0.013795304789136957,0.013883842674669668,0,0,round-013-long-main.deepseek-flash-reasoning-opencode.case-26,0.1912,0.204
+deepseek-flash-reasoning-opencode,DS-V4F-R,case-28,lu,pass,fail,0.11781553661196983,,1,2,round-013-long-main.deepseek-flash-reasoning-opencode.case-28,1.1679,0.4444
+opus-5-5-claude-code,Opus 5.5,case-01,floyd-warshall,pass,pass,0.8527580922044459,0.9027264127663367,8,9,round-013-long-c01.opus-5-5-claude-code.case-01,54.6004,31.3981
+nemotron-3-5-super-opencode,Nemo 3.5S,case-18,gemm,pass,pass,0.058186731669135495,0.8943406661396003,0,0,round-013-long-x3.nemotron-3-5-super-opencode.case-18,,
+nemotron-3-ultra-opencode,Nemo 3U,case-05,ludcmp,fail,fail,,,0,0,round-013-long-c05.nemotron-3-ultra-opencode.case-05,,
+deepseek-flash-reasoning-opencode,DS-V4F-R,case-01,floyd-warshall,pass,pass,0.1810843608920643,0.45856168717831314,26,29,round-013-long-c01.deepseek-flash-reasoning-opencode.case-01,0.0962,0.7067
+nemotron-3-ultra-opencode,Nemo 3U,case-16,jacobi-2d,pass,pass,0.3069624071273028,0.3076871782746175,0,0,round-013-long-main.nemotron-3-ultra-opencode.case-16,,
+deepseek-flash-reasoning-opencode,DS-V4F-R,case-03,covariance,pass,pass,0.45603118948267113,0.006993961080865048,18,20,round-013-long-main.deepseek-flash-reasoning-opencode.case-03,0.0927,0.4424
+nemotron-3-ultra-opencode,Nemo 3U,case-01,floyd-warshall,pass,pass,0.017077836944259094,0.015419664681444165,0,0,round-013-long-c01.nemotron-3-ultra-opencode.case-01,,
+deepseek-flash-reasoning-opencode,DS-V4F-R,case-14,fdtd-2d,pass,pass,0.2102096400688588,0.41744281624350676,6,7,round-013-long-main.deepseek-flash-reasoning-opencode.case-14,0.1636,0.7548
+sol-6-1-codex-cli,GPT-6.1S,case-01,floyd-warshall,pass,pass,0.6237731862621037,0.7112338261498897,0,1,round-013-long-c01.sol-6-1-codex-cli.case-01,1.6146,1.365
+nemotron-3-ultra-opencode,Nemo 3U,case-28,lu,fail,fail,,,0,0,round-013-long-main.nemotron-3-ultra-opencode.case-28,,
+nemotron-3-ultra-opencode,Nemo 3U,case-02,bicg,pass,pass,0.05553750060405481,0.009565094621398389,0,0,round-013-long-x3.nemotron-3-ultra-opencode.case-02,,
+deepseek-flash-reasoning-opencode,DS-V4F-R,case-05,ludcmp,pass,fail,0.2921441724238125,,0,0,round-013-long-c05.deepseek-flash-reasoning-opencode.case-05,0.1549,0.621
+opus-5-5-claude-code,Opus 5.5,case-23,deriche,pass,pass,0.2786861071752315,0.22632973283982788,26,26,round-013-long-claude.opus-5-5-claude-code.case-23,58.9779,30.7151
+opus-5-5-claude-code,Opus 5.5,case-17,nussinov,pass,pass,1.0850266215105657,0.6287569057181979,13,14,round-013-long-claude.opus-5-5-claude-code.case-17,47.0184,54.0785
+opus-5-5-claude-code,Opus 5.5,case-24,adi,pass,pass,9.221610160225556,23.567412738369764,18,19,round-013-long-x3.opus-5-5-claude-code.case-24,33.7846,36.5128
+kimi-opencode,Kimi K3,case-20,gesummv,pass,pass,0.7493894555777156,0.7708782178696627,0,0,round-013-long-main.kimi-opencode.case-20,1.0119,1.2569
+sol-6-1-codex-cli,GPT-6.1S,case-29,jacobi-1d,pass,pass,6.215989090768644,7.661561098318701,0,0,round-013-long-main.sol-6-1-codex-cli.case-29,0.8913,1.4381
+nemotron-3-5-super-opencode,Nemo 3.5S,case-12,2mm,pass,pass,0.8272000833243751,0.8273236778634393,0,0,round-013-long-main.nemotron-3-5-super-opencode.case-12,,
+nemotron-3-5-super-opencode,Nemo 3.5S,case-19,seidel-2d,fail,fail,,,0,0,round-013-long-main.nemotron-3-5-super-opencode.case-19,,
+opus-5-5-claude-code,Opus 5.5,case-18,gemm,pass,pass,6.702871636475351,3.6651176508445715,3,4,round-013-long-x3.opus-5-5-claude-code.case-18,50.8617,22.4445
+glm-5-2-opencode,GLM-5.2,case-17,nussinov,pass,pass,0.023763346664387622,0.03578325612106193,0,0,round-013-long-main.glm-5-2-opencode.case-17,1.311,2.1169
+nemotron-3-5-super-opencode,Nemo 3.5S,case-05,ludcmp,fail,fail,,,0,0,round-013-long-c05.nemotron-3-5-super-opencode.case-05,,
+nemotron-3-5-super-opencode,Nemo 3.5S,case-10,durbin,fail,fail,,,0,0,round-013-long-main.nemotron-3-5-super-opencode.case-10,,
+glm-5-2-opencode,GLM-5.2,case-19,seidel-2d,pass,pass,0.00257192856717894,0.05972203515842016,0,0,round-013-long-main.glm-5-2-opencode.case-19,2.4715,2.0375
+kimi-opencode,Kimi K3,case-26,syrk,pass,pass,0.7221210623485756,0.4398860991262193,0,0,round-013-long-main.kimi-opencode.case-26,0.6539,3.1191
+sol-6-1-codex-cli,GPT-6.1S,case-11,atax,pass,pass,0.19965394692119573,0.24989728886182497,0,0,round-013-long-main.sol-6-1-codex-cli.case-11,0.7527,1.1231
+kimi-opencode,Kimi K3,case-12,2mm,pass,pass,0.8277054122233618,0.8277158490530175,0,0,round-013-long-main.kimi-opencode.case-12,0.3072,0.4786
+nemotron-3-5-super-opencode,Nemo 3.5S,case-09,gramschmidt,pass,pass,0.0014136307063187246,0.0035934033270903945,0,0,round-013-long-main.nemotron-3-5-super-opencode.case-09,,
+nemotron-3-5-super-opencode,Nemo 3.5S,case-28,lu,fail,fail,,,0,0,round-013-long-main.nemotron-3-5-super-opencode.case-28,,
+deepseek-flash-reasoning-opencode,DS-V4F-R,case-15,doitgen,pass,pass,0.8012630513974596,0.8013817241826404,0,0,round-013-long-main.deepseek-flash-reasoning-opencode.case-15,0.0674,0.4467
+sol-6-1-codex-cli,GPT-6.1S,case-20,gesummv,pass,pass,0.10426058675118631,0.661460656673405,0,0,round-013-long-main.sol-6-1-codex-cli.case-20,0.3435,0.8923
+opus-5-5-claude-code,Opus 5.5,case-06,gemver,pass,pass,0.40805486848416544,0.40877704010729554,16,17,round-013-long-claude.opus-5-5-claude-code.case-06,28.0006,33.1524
+sol-6-1-codex-cli,GPT-6.1S,case-18,gemm,pass,pass,0.894338288987752,2.039336638618043,0,0,round-013-long-x3.sol-6-1-codex-cli.case-18,0.6554,1.5206
+glm-5-2-opencode,GLM-5.2,case-11,atax,pass,accepted,0.29053184597141557,0.2886295335785562,0,0,round-013-long-main.glm-5-2-opencode.case-11,0.7584,1.335
+opus-5-5-claude-code,Opus 5.5,case-20,gesummv,pass,pass,0.8962365442901692,0.8387580745284553,4,5,round-013-long-claude.opus-5-5-claude-code.case-20,12.4865,24.039
+nemotron-3-ultra-opencode,Nemo 3U,case-17,nussinov,pass,pass,0.0019692999522798065,0.001999554819386578,0,0,round-013-long-main.nemotron-3-ultra-opencode.case-17,,
+opus-5-5-claude-code,Opus 5.5,case-26,syrk,pass,pass,5.0089004036567495,5.351061043754432,8,9,round-013-long-claude.opus-5-5-claude-code.case-26,47.0274,34.1469
+deepseek-flash-reasoning-opencode,DS-V4F-R,case-25,syr2k,pass,pass,0.006938368551263952,0.8800644652746922,0,0,round-013-long-main.deepseek-flash-reasoning-opencode.case-25,0.111,0.4664
+nemotron-3-5-super-opencode,Nemo 3.5S,case-20,gesummv,pass,pass,0.7696840102713391,0.07729061737707466,0,0,round-013-long-main.nemotron-3-5-super-opencode.case-20,,
+opus-5-5-claude-code,Opus 5.5,case-30,mvt,pass,pass,0.7967878489302611,0.8042912010064147,36,37,round-013-long-claude.opus-5-5-claude-code.case-30,11.8125,20.3987
+nemotron-3-ultra-opencode,Nemo 3U,case-18,gemm,pass,pass,0.8921160796537333,0.07745304213867789,0,0,round-013-long-x3.nemotron-3-ultra-opencode.case-18,,
+kimi-opencode,Kimi K3,case-15,doitgen,pass,pass,0.7745203714538077,0.7744333625920341,0,0,round-013-long-main.kimi-opencode.case-15,1.142,0.7418
+sol-6-1-codex-cli,GPT-6.1S,case-06,gemver,pass,pass,0.018710625051214978,0.13468957894761796,0,0,round-013-long-main.sol-6-1-codex-cli.case-06,0.5636,0.9401
+nemotron-3-5-super-opencode,Nemo 3.5S,case-26,syrk,pass,pass,0.020260661584515904,0.02037923880015897,0,0,round-013-long-main.nemotron-3-5-super-opencode.case-26,,
+kimi-opencode,Kimi K3,case-25,syr2k,pass,pass,0.7650027913267281,0.8826957260959314,0,0,round-013-long-main.kimi-opencode.case-25,5.695,3.1088
+nemotron-3-ultra-opencode,Nemo 3U,case-24,adi,pass,fail,0.019472548860463984,,0,0,round-013-long-x3.nemotron-3-ultra-opencode.case-24,,
+glm-5-2-opencode,GLM-5.2,case-30,mvt,pass,pass,0.3020481390046498,0.3029007663073434,0,0,round-013-long-main.glm-5-2-opencode.case-30,0.5426,0.4135
+deepseek-flash-reasoning-opencode,DS-V4F-R,case-21,symm,pass,pass,0.013932685528430685,0.013937891867733447,0,0,round-013-long-main.deepseek-flash-reasoning-opencode.case-21,0.3754,0.5002
+kimi-opencode,Kimi K3,case-13,correlation,pass,pass,0.793048337023598,0.7978960556389473,4,5,round-013-long-main.kimi-opencode.case-13,5.0594,4.0924
+deepseek-flash-reasoning-opencode,DS-V4F-R,case-12,2mm,pass,pass,0.43825227015014295,0.2983590884127467,0,0,round-013-long-main.deepseek-flash-reasoning-opencode.case-12,0.3338,0.102
+kimi-opencode,Kimi K3,case-21,symm,pass,pass,0.27993913340818416,0.8699961937034032,0,0,round-013-long-main.kimi-opencode.case-21,9.9769,2.9111
+glm-5-2-opencode,GLM-5.2,case-22,trisolv,pass,pass,0.047100516887966355,0.047181830505149326,2,3,round-013-long-main.glm-5-2-opencode.case-22,0.6256,3.6639
+deepseek-flash-reasoning-opencode,DS-V4F-R,case-27,cholesky,pass,pass,0.013800157151404329,0.0008997195547596396,17,19,round-013-long-main.deepseek-flash-reasoning-opencode.case-27,0.1327,1.2406
+opus-5-5-claude-code,Opus 5.5,case-09,gramschmidt,pass,fail,0.776256911881059,,27,30,round-013-long-claude.opus-5-5-claude-code.case-09,43.378,58.1706
+glm-5-2-opencode,GLM-5.2,case-14,fdtd-2d,pass,pass,0.3279508780803376,0.13213079910621772,0,0,round-013-long-main.glm-5-2-opencode.case-14,2.9628,4.1933
+sol-6-1-codex-cli,GPT-6.1S,case-22,trisolv,pass,pass,0.04732761969642391,0.04716288242764228,0,0,round-013-long-main.sol-6-1-codex-cli.case-22,1.2001,1.0985
+nemotron-3-5-super-opencode,Nemo 3.5S,case-22,trisolv,pass,pass,0.00024831780596748423,0.00023620876633515743,0,0,round-013-long-main.nemotron-3-5-super-opencode.case-22,,
+nemotron-3-ultra-opencode,Nemo 3U,case-15,doitgen,pass,fail,0.11289323558097462,,0,0,round-013-long-main.nemotron-3-ultra-opencode.case-15,,
+opus-5-5-claude-code,Opus 5.5,case-28,lu,pass,pass,1.4050411371078484,1.395813654124186,7,8,round-013-long-claude.opus-5-5-claude-code.case-28,87.477,41.3563
+kimi-opencode,Kimi K3,case-27,cholesky,pass,pass,0.2617692209149119,0.279881715410703,8,9,round-013-long-main.kimi-opencode.case-27,4.5318,6.0103
+sol-6-1-codex-cli,GPT-6.1S,case-09,gramschmidt,pass,pass,0.19067167205241495,0.18882433852919997,0,0,round-013-long-main.sol-6-1-codex-cli.case-09,1.5952,1.7576
+sol-6-1-codex-cli,GPT-6.1S,case-16,jacobi-2d,pass,pass,1.7076247556726316,0.8042423310815265,0,0,round-013-long-main.sol-6-1-codex-cli.case-16,1.6989,1.7725
+kimi-opencode,Kimi K3,case-18,gemm,pass,pass,0.8942892722538502,0.8943073645384019,0,0,round-013-long-x3.kimi-opencode.case-18,0.5928,0.8188
+deepseek-flash-reasoning-opencode,DS-V4F-R,case-29,jacobi-1d,pass,pass,1.9572139005827403,0.05922337760452538,3,5,round-013-long-main.deepseek-flash-reasoning-opencode.case-29,0.3946,0.7572
+nemotron-3-ultra-opencode,Nemo 3U,case-23,deriche,pass,pass,0.0059439589584822355,0.005938704180784833,0,0,round-013-long-main.nemotron-3-ultra-opencode.case-23,,
+kimi-opencode,Kimi K3,case-24,adi,pass,pass,0.1502627163274028,0.2254197679892699,9,10,round-013-long-x3.kimi-opencode.case-24,11.901,10.0318
+kimi-opencode,Kimi K3,case-23,deriche,pass,pass,0.02861910951105828,0.11308678143640123,11,12,round-013-long-main.kimi-opencode.case-23,6.9814,26.5998
+sol-6-1-codex-cli,GPT-6.1S,case-30,mvt,pass,pass,0.12342776941815109,0.4373312734571224,0,0,round-013-long-main.sol-6-1-codex-cli.case-30,1.6156,0.829
+glm-5-2-opencode,GLM-5.2,case-28,lu,pass,pass,0.2972475674363531,0.258793186419008,7,8,round-013-long-main.glm-5-2-opencode.case-28,1.8253,4.7833
+deepseek-flash-reasoning-opencode,DS-V4F-R,case-10,durbin,pass,pass,4.5491854971983194e-05,0.0001675832988104486,44,57,round-013-long-main.deepseek-flash-reasoning-opencode.case-10,0.6838,0.7082
+kimi-opencode,Kimi K3,case-19,seidel-2d,pass,pass,0.04057950713568517,0.04013800941801293,7,7,round-013-long-main.kimi-opencode.case-19,31.7474,9.2437
+nemotron-3-ultra-opencode,Nemo 3U,case-25,syr2k,fail,pass,,0.03266764692011002,0,0,round-013-long-main.nemotron-3-ultra-opencode.case-25,,
+opus-5-5-claude-code,Opus 5.5,case-11,atax,pass,accepted,0.8274319278227662,0.8127763255940822,13,14,round-013-long-claude.opus-5-5-claude-code.case-11,39.1784,32.7152
+deepseek-flash-reasoning-opencode,DS-V4F-R,case-24,adi,pass,pass,0.16216990300175993,0.02000923769288386,0,0,round-013-long-x3.deepseek-flash-reasoning-opencode.case-24,1.1599,0.1338
+opus-5-5-claude-code,Opus 5.5,case-16,jacobi-2d,pass,pass,3.1329773941212613,3.855223397071564,11,12,round-013-long-claude.opus-5-5-claude-code.case-16,48.4443,51.5618
+kimi-opencode,Kimi K3,case-07,trmm,pass,pass,0.7502070397663275,0.7501777498714118,0,0,round-013-long-main.kimi-opencode.case-07,0.7192,1.2047
+nemotron-3-ultra-opencode,Nemo 3U,case-29,jacobi-1d,pass,pass,0.36023959406648876,0.3645535702240703,0,0,round-013-long-main.nemotron-3-ultra-opencode.case-29,,
+nemotron-3-5-super-opencode,Nemo 3.5S,case-06,gemver,pass,pass,0.011712471342072059,0.024082947429743748,0,0,round-013-long-main.nemotron-3-5-super-opencode.case-06,,
+nemotron-3-ultra-opencode,Nemo 3U,case-21,symm,fail,fail,,,0,0,round-013-long-main.nemotron-3-ultra-opencode.case-21,,
+nemotron-3-ultra-opencode,Nemo 3U,case-12,2mm,pass,pass,0.8271011699358671,0.8277745977419444,0,0,round-013-long-main.nemotron-3-ultra-opencode.case-12,,
+opus-5-5-claude-code,Opus 5.5,case-22,trisolv,pass,pass,0.24194357011306164,0.31612908781253923,10,11,round-013-long-claude.opus-5-5-claude-code.case-22,61.7018,54.8764
+sol-6-1-codex-cli,GPT-6.1S,case-26,syrk,pass,pass,0.43188459583900396,0.9116557863908136,0,0,round-013-long-main.sol-6-1-codex-cli.case-26,1.2064,1.7235
+sol-6-1-codex-cli,GPT-6.1S,case-24,adi,pass,pass,1.1639455194340529,0.22218395510484223,0,0,round-013-long-x3.sol-6-1-codex-cli.case-24,3.0105,1.0077
+nemotron-3-ultra-opencode,Nemo 3U,case-10,durbin,fail,fail,,,0,0,round-013-long-main.nemotron-3-ultra-opencode.case-10,,
+deepseek-flash-reasoning-opencode,DS-V4F-R,case-23,deriche,pass,fail,0.0011309732223640189,,6,7,round-013-long-main.deepseek-flash-reasoning-opencode.case-23,0.3448,1.2912
+glm-5-2-opencode,GLM-5.2,case-20,gesummv,pass,pass,0.7110839153796682,0.6579555868005661,0,0,round-013-long-main.glm-5-2-opencode.case-20,0.4868,0.7439
+glm-5-2-opencode,GLM-5.2,case-26,syrk,pass,pass,0.7221012385225056,0.7220624505174468,0,0,round-013-long-main.glm-5-2-opencode.case-26,0.8459,0.6412
+deepseek-flash-reasoning-opencode,DS-V4F-R,case-18,gemm,pass,pass,0.01397192934131014,0.894366773493337,0,0,round-013-long-x3.deepseek-flash-reasoning-opencode.case-18,0.0662,0.0951
+kimi-opencode,Kimi K3,case-17,nussinov,fail,pass,,0.3083617780189941,13,14,round-013-long-main.kimi-opencode.case-17,17.8655,9.9494
+nemotron-3-ultra-opencode,Nemo 3U,case-13,correlation,pass,pass,0.07216115380336131,0.4521150557644305,0,0,round-013-long-main.nemotron-3-ultra-opencode.case-13,,
+kimi-opencode,Kimi K3,case-29,jacobi-1d,pass,pass,4.735479460337109,2.2788411994543702,12,14,round-013-long-main.kimi-opencode.case-29,2.2343,53.8165
+deepseek-flash-reasoning-opencode,DS-V4F-R,case-07,trmm,pass,pass,0.006970075947329691,0.05234695387065689,0,0,round-013-long-main.deepseek-flash-reasoning-opencode.case-07,0.0939,0.8664
+glm-5-2-opencode,GLM-5.2,case-09,gramschmidt,pass,accepted,0.18391927300587907,0.012674282806340075,0,0,round-013-long-main.glm-5-2-opencode.case-09,1.1242,1.5493
+deepseek-flash-reasoning-opencode,DS-V4F-R,case-17,nussinov,pass,pass,0.037932880394207544,0.020842316616014763,4,6,round-013-long-main.deepseek-flash-reasoning-opencode.case-17,0.6732,0.2753
+kimi-opencode,Kimi K3,case-10,durbin,pass,pass,0.0010564633843823167,0.0007273507540957906,11,12,round-013-long-main.kimi-opencode.case-10,22.3344,20.6275
+glm-5-2-opencode,GLM-5.2,case-16,jacobi-2d,pass,pass,0.18389239716768535,0.22824055315034456,0,0,round-013-long-main.glm-5-2-opencode.case-16,2.6534,3.0255
+sol-6-1-codex-cli,GPT-6.1S,case-14,fdtd-2d,pass,pass,0.6915218237107715,1.343728798509202,0,0,round-013-long-main.sol-6-1-codex-cli.case-14,1.5165,1.6572
+nemotron-3-ultra-opencode,Nemo 3U,case-19,seidel-2d,fail,fail,,,0,0,round-013-long-main.nemotron-3-ultra-opencode.case-19,,
+opus-5-5-claude-code,Opus 5.5,case-14,fdtd-2d,pass,pass,4.722808523553546,4.8982354808265,18,19,round-013-long-claude.opus-5-5-claude-code.case-14,51.4465,30.0911
+glm-5-2-opencode,GLM-5.2,case-06,gemver,pass,pass,0.10532551749074587,0.10599431909749596,0,0,round-013-long-main.glm-5-2-opencode.case-06,1.408,1.1892
+opus-5-5-claude-code,Opus 5.5,case-13,correlation,pass,pass,3.259904915594941,5.291046838348182,18,22,round-013-long-claude.opus-5-5-claude-code.case-13,33.8542,36.9943
+nemotron-3-5-super-opencode,Nemo 3.5S,case-14,fdtd-2d,pass,pass,0.27591146397792826,0.31434542603188653,0,0,round-013-long-main.nemotron-3-5-super-opencode.case-14,,
+nemotron-3-5-super-opencode,Nemo 3.5S,case-11,atax,pass,pass,0.05464214403113547,0.05458015713081329,0,0,round-013-long-main.nemotron-3-5-super-opencode.case-11,,
+nemotron-3-5-super-opencode,Nemo 3.5S,case-16,jacobi-2d,pass,pass,0.3073702758286586,0.30772941756038985,0,0,round-013-long-main.nemotron-3-5-super-opencode.case-16,,
+nemotron-3-5-super-opencode,Nemo 3.5S,case-30,mvt,pass,pass,0.10198016296244808,0.024613330286974405,0,0,round-013-long-main.nemotron-3-5-super-opencode.case-30,,
+sol-6-1-codex-cli,GPT-6.1S,case-28,lu,pass,pass,0.6296281269525565,0.633270354240927,0,0,round-013-long-main.sol-6-1-codex-cli.case-28,0.8399,0.9982
+deepseek-flash-reasoning-opencode,DS-V4F-R,case-19,seidel-2d,pass,pass,0.0194867819229458,0.010690462568388856,0,0,round-013-long-main.deepseek-flash-reasoning-opencode.case-19,0.9213,0.6723
+nemotron-3-ultra-opencode,Nemo 3U,case-07,trmm,pass,pass,0.06361418188456988,0.06360774150651871,0,0,round-013-long-main.nemotron-3-ultra-opencode.case-07,,
+nemotron-3-ultra-opencode,Nemo 3U,case-27,cholesky,fail,pass,,0.2610619908688794,0,0,round-013-long-main.nemotron-3-ultra-opencode.case-27,,
+opus-5-5-claude-code,Opus 5.5,case-05,ludcmp,pass,pass,0.24529051368770347,0.5530629894752976,11,12,round-013-long-c05.opus-5-5-claude-code.case-05,42.1614,43.5047
+deepseek-flash-reasoning-opencode,DS-V4F-R,case-04,heat-3d,pass,pass,0.3090034789603741,0.06785433441008135,44,,round-013-main.deepseek-flash-reasoning-opencode.case-04,0.2566,0.8237
+deepseek-flash-reasoning-opencode,DS-V4F-R,case-08,3mm,pass,pass,0.8410608822449163,0.8319321046717788,0,,round-013-main.deepseek-flash-reasoning-opencode.case-08,0.0604,0.1023
+glm-5-2-opencode,GLM-5.2,case-04,heat-3d,pass,pass,0.277672865270131,0.224248272824879,0,,round-013-main.glm-5-2-opencode.case-04,2.3943,2.0536
+glm-5-2-opencode,GLM-5.2,case-08,3mm,pass,pass,0.8411798475091395,0.8411544909069751,0,,round-013-main.glm-5-2-opencode.case-08,0.7773,0.7089
+kimi-opencode,Kimi K3,case-04,heat-3d,pass,pass,0.5750117084354543,0.5294336363719574,8,,round-013-main.kimi-opencode.case-04,3.1902,13.266
+kimi-opencode,Kimi K3,case-08,3mm,pass,pass,0.8410827065997201,0.8318541433060147,0,,round-013-main.kimi-opencode.case-08,0.3472,0.3491
+nemotron-3-5-super-opencode,Nemo 3.5S,case-04,heat-3d,pass,pass,0.12403063649359836,0.15261306172499628,0,,round-013-main.nemotron-3-5-super-opencode.case-04,,
+nemotron-3-5-super-opencode,Nemo 3.5S,case-08,3mm,pass,pass,0.006184949116407196,0.8315369752296018,0,,round-013-main.nemotron-3-5-super-opencode.case-08,,
+nemotron-3-ultra-opencode,Nemo 3U,case-04,heat-3d,pass,pass,0.08542656931987125,0.08503069859994841,0,,round-013-main.nemotron-3-ultra-opencode.case-04,,
+nemotron-3-ultra-opencode,Nemo 3U,case-08,3mm,fail,pass,,0.8301762626710063,0,,round-013-main.nemotron-3-ultra-opencode.case-08,,
+opus-5-5-claude-code,Opus 5.5,case-04,heat-3d,pass,pass,0.7649362290562627,1.1511497680488465,18,,round-013-claude.opus-5-5-claude-code.case-04,74.3663,43.8204
+opus-5-5-claude-code,Opus 5.5,case-08,3mm,pass,pass,6.313910526174207,5.207538220589533,29,,round-013-claude.opus-5-5-claude-code.case-08,85.1424,46.1524
+sol-6-1-codex-cli,GPT-6.1S,case-04,heat-3d,pass,pass,0.4763409767888634,0.4969810065056135,0,,round-013-main.sol-6-1-codex-cli.case-04,1.4612,1.3326
+sol-6-1-codex-cli,GPT-6.1S,case-08,3mm,pass,pass,0.25774381780047195,0.8316316630236706,0,,round-013-main.sol-6-1-codex-cli.case-08,1.9762,0.9044

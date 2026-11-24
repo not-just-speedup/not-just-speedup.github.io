@@ -1,0 +1,68 @@
+# Case-29 (`jacobi-1d`) CUDA Translation Notes
+
+## 1. Approach
+
+The CPU baseline executes $n_0$ alternating sweeps of a 1D 3-point Jacobi stencil ($c = \text{float}(0.33333\text{f})$) on `buf0[1..n1-2]` and `buf1[1..n1-2]`, leaving `buf0[0]`, `buf0[n1-1]`, `buf1[0]`, and `buf1[n1-1]` fixed (while reading both boundary pairs on alternating half-steps).
+
+Rather than iterating $O(n_0 \cdot n_1)$ memory- or compute-bound time steps, we exploit the exact linear structure of the recurrence and dispatch across five regimes selected in `pb_setup(n0, n1)`:
+
+1. **No-op (`n1 <= 2`)**: Leaves both device buffers untouched so all elements are returned bit-for-bit identical.
+2. **Exact Direct $n_0 = 1$ (`direct_n0_1_kernel`)**: Zero-SMEM `float4` vectorized kernel computing both half-steps in one fused pass (1 read + 2 writes), achieving ~5.1–5.5 TB/s (near HBM3e speed of light) and bit-for-bit FP32 agreement with the baseline.
+3. **Exact Direct Warp-Register Temporal Blocking (`2 <= n0 <= 14`, or tiny `n1 <= 768 && n0 <= 128`)**: `direct_warp_stencil_kernel` holds 768 elements per warp (24 elements/thread in registers, halo $H = \lceil 2n_0 \rceil_4$, output tile $B = 768 - 2H$) and advances all $2n_0$ half-steps entirely in registers via `__shfl_up_sync` / `__shfl_down_sync` with zero global intermediate traffic and bit-for-bit FP32 accuracy. On large arrays, strictly interior warps run a zero-spill `float4` fast path concurrently with a tiny boundary-warp kernel on a non-blocking CUDA stream.
+4. **Exact Method-of-Images + Spectral Overlap-Save FFT (`n0 >= 15`, $S = 2n_0 - 1 < 1.15\times 10^7$)**:
+   - **Exact linear decomposition**: Let $M = n_1 - 2$, $S = 2n_0 - 1$, and $A$ be the $M \times M$ Dirichlet tridiagonal matrix with entries $(c, c, c)$. After $S$ half-steps:
+     $$\text{buf1}[1..M] = A^S \text{buf0}[1..M] + \text{buf0}[0]\,p_i + \text{buf0}[n_1-1]\,p_{M+1-i} + \text{buf1}[0]\,q_i + \text{buf1}[n_1-1]\,q_{M+1-i}$$
+     and the final `buf0[1..M]` is obtained by fusing one final 3-point stencil step from `buf1` during the output store (zero extra global memory traffic).
+   - **Exact $O(1)$ boundary Green's function ($p, q$) in `pb_setup`**: Because $3c \approx 0.999990016 < 1$, the half-line steady-state boundary vectors decay geometrically ($r_1^i \approx 0.994538^i$, reaching $< 3.4 \times 10^{-20}$ by $i = 8192$). A single host FP64 FFT (up to 32,768 points, $< 2$ ms in `pb_setup`) computes $p^{(\infty)}, q^{(\infty)}$ to $\sim 10^{-16}$, and Poisson-summation odd-image folding gives exact finite-$M$ vectors $p^{(M)}, q^{(M)}$ to $\sim 10^{-15}$ for any $M \ge 1$ and any $n_0 \le \text{INT\_MAX}$.
+   - **Method of images + Gaussian overlap-save**: $A^S x^{(0)}$ is identically the free-space convolution of the odd-periodic extension $\tilde{x}$ (period $P = 2(M+1)$) with the $S$-fold trinomial kernel $w^{(S)}$ (exact spectrum $H(\theta) = [c(1 + 2\cos\theta)]^S$). By Chernoff's bound, the tail beyond $R = \lceil 6\sqrt{S} \rceil$ is $< 4 \times 10^{-12}$, enabling $O(n_1 \log L)$ block-local overlap-save FFTs in a single global pass for all $S \le 4\times 10^6$ ($n_0 \le 2\times 10^6$) using $L \in \{1024, 2048, 4096, 8192, 16384, 32768\}$, and 2–4 passes at $L = 32768$ for $4\times 10^6 < S < 1.15\times 10^7$.
+   - **Jacobi-zero-matched 9-tap pre-filter (`Filter0`)**: Plain FP32 FFTs leak $\sim 10^{-8}$ rounding noise from Nyquist ($\theta = \pi$) and $\theta = 2\pi/3$ into low frequencies on adversarial high-frequency inputs (e.g., $(-1)^i$ with zero BCs). Fusing the symmetric 9-tap pre-filter $F_0 = [1,1,1]^2 * (1,2,2,2,1)/72 = (1,4,9,14,16,14,9,4,1)/72$ directly into Forward Stage 0's global load places exact double zeros at $\pi$ and $2\pi/3$ and a zero at $\pi/2$, absorbs 2 Jacobi steps into $S-2$, compensates $F_5(\theta)$ only on $m < L/4$ where $F_5 > 0.12$, and requires zero extra SMEM.
+   - **Blackwell (SM 10.3) GPU micro-architecture**:
+     - `float2` complex storage (`LDS.64`/`STS.64`) with 1-way bank-conflict-free swizzle `swiz2(i) = i ^ ((i >> 4) & 15)` across all radix stages for all six FFT sizes.
+     - Fused global load + `Filter0` + Forward Stage 0 radix-16 directly from registers.
+     - Frequency-pruned final forward / first inverse stages (`radix4_fwd_03`, `radix8_fwd_07`, `radix16_fwd_0_15` and inverses) when $m_{\text{cut}} < N / R_{\text{last}}$, skipping unneeded output bins and zero-writes.
+     - Collapsed 4-FMA real-to-complex + real-filter + complex-to-real multiply in place.
+     - Split interior/boundary execution on large grids: strictly interior blocks run a static-SMEM ($L \le 8192$), zero-stack-frame, zero-spill, 64-register (`1024` threads/SM) kernel concurrently with a tiny boundary kernel (using exact FP64-rounded LUT twiddles for $31\times$ lower rounding floor near boundaries/small arrays) on a non-blocking CUDA stream.
+     - Constant arithmetic uses `C_F64 = (double)0.33333f` so our spectral reference matches the FP32 constant and remains strictly inside acceptance bounds under both `(double)0.33333f` and `0.33333` FP64 references.
+5. **Steady-State Boundary-Only Kernel ($S \ge 1.15 \times 10^7$, up to `INT_MAX`)**: Since $(3c)^S < 1.4 \times 10^{-50}$ (far below FP32 min subnormal), $A^S x^{(0)} = 0$ identically everywhere; `steady_boundary_kernel` streams zeros across the interior via `float4` writes and applies the exact boundary vectors near the ends at ~6.8–7.0 TB/s.
+
+## 2. Why This Approach Was Chosen
+
+- A standard time-marching or temporal-blocked stencil requires $O(n_0 \cdot n_1)$ FLOPs. On NVIDIA B300 (70.7 TFLOP/s FP32, ~5.7 TB/s HBM3e), even an ideal compute-bound stencil takes $\sim 114\text{ ms}$ at $(n_0 = 20000, n_1 = 67\text{M})$, whereas our overlap-save FFT solves it in **$265\ \mu\text{s}$** ($>400\times$ faster than the FP32 compute roof).
+- Conversely, for $n_0 \le 14$, direct warp-register temporal blocking executes fewer FLOPs than an FFT, needs zero overlap amplification beyond $2n_0$, and achieves 3.4–5.5 TB/s with bit-for-bit FP32 accuracy.
+- Computing the exact boundary response analytically via FP64 FFT + image folding in `pb_setup` completely decouples arbitrary non-zero alternating boundary conditions (`buf0[0], buf0[n1-1], buf1[0], buf1[n1-1]`) from the homogeneous Dirichlet interior problem, with $O(1)$ setup time ($\sim 0.5\text{–}3\text{ ms}$) and zero impact on `pb_compute`.
+
+## 3. Alternatives Tried
+
+- **Split `s_re[]`/`s_im[]` SMEM layout with 16-step spatial pre-stencil (`S_PRE=16`)**: Initial working prototype; accurate across all tests, but ran at $507\ \mu\text{s}$ (1,588 GB/s) on $(n_0=1000, n_1=67\text{M})$ due to double SMEM traffic (`LDS.32`/`STS.32`), unpruned stages, and extra `S_PRE` passes. Switching to `float2` (`LDS.64`/`STS.64`), fused 9-tap `Filter0`, pruned stages, and split concurrent streams cut this to **$232\ \mu\text{s}$** (2.18× speedup).
+- **Decimated B-spline / polyphase FFT ($D = 4, 8$, $K = 1024$)**: Explored downsampling smooth spectra by $4\times$–$8\times$ to shrink FFT length. Benchmarked across four variants on B300; best achieved $317\ \mu\text{s}$ (2,538 GB/s) on $n_1 = 67\text{M}$ because polyphase down/upsampling amplified SMEM reads and constant-cache pressure, losing to direct `float2` pruned $L = 4096$ ($221\text{–}232\ \mu\text{s}$).
+- **Warp-shuffle `8×8×32` FFT, fused Stage 1+2 (`reduce8`), and `SHFL`-assisted `Filter0` loads**: Benchmarked on B300; heavy `__shfl_xor_sync` bottlenecked Blackwell's MIO/LSU pipe ($398\ \mu\text{s}$ for `8×8×32`, $257\ \mu\text{s}$ for `reduce8`, $283\text{–}312\ \mu\text{s}$ for `SHFL` loads) compared to L1-cached `__ldg` + `float2` swizzled SMEM ($221\ \mu\text{s}$).
+- **9-tap boxcar pre-filter `F9 = (1,2,2,2,2,2,2,2,1)/16`**: Lacked a zero at $\theta = 2\pi/3$ (the Jacobi stencil's exact zero), causing elevated relative error on pure $\theta = 2\pi/3$ eigenmodes at high $n_0$. Replaced with `Filter0 = [1,1,1]^2 * F5 / 72`, which matches the Jacobi zeros identically.
+- **Full-LUT and 4-anchor twiddles in the interior kernel**: Full-LUT twiddles cut rounding error by $31\times$ on adversarial Nyquist-defect cases (`adv_alt0_fft500`: from $9.5\times$ to $0.31\times$ of CPU error), but extra `LDG.64` pressure added $\sim 29\text{–}130\ \mu\text{s}$ on $67\text{M}$ elements. Splitting interior vs. boundary kernels let us use full-LUT twiddles on boundary/small-grid kernels (0 µs overhead on large grids) and 1-anchor FMA twiddles on the zero-spill interior kernel.
+- **`KPT = 16` vs `KPT = 24` vs `KPT = 32` for direct warp stencil**: `KPT = 24` (768 elems/warp, 64 regs, 0 spills) outperformed `KPT = 16` by 15–18% across $2 \le n_0 \le 14$ ($190\ \mu\text{s}$ vs $217\ \mu\text{s}$ at $n_0 = 10, n_1 = 67\text{M}$) while staying faster than `KPT = 32` for $n_0 \le 16$.
+
+## 4. Expected Performance
+
+Measured warmed-up `pb_compute` on NVIDIA B300 SXM6 AC (SM 10.3, HBM3e 1R+2W streaming ceiling $\approx 5.75\text{ TB/s}$):
+
+| Regime | Example $(n_0, n_1)$ | Time (`pb_compute`) | Effective BW (1R+2W min) |
+|---|---|---|---|
+| Exact $n_0 = 1$ | $(1,\ 16\text{M})$ | $38\text{–}39\ \mu\text{s}$ | $5,130\text{–}5,310\text{ GB/s}$ |
+| Direct warp (`KPT=24`) | $(10,\ 67\text{M})$ | $190\ \mu\text{s}$ | $4,227\text{ GB/s}$ |
+| FFT $L=1024/2048$ | $(24,\ 67\text{M})$ | $256\ \mu\text{s}$ | $3,140\text{ GB/s}$ |
+| FFT $L=2048$ pruned | $(100,\ 16\text{M})$ | $70.5\ \mu\text{s}$ | $2,855\text{ GB/s}$ |
+| FFT $L=4096$ pruned | $(1000,\ 67\text{M})$ | $233\ \mu\text{s}$ | $3,462\text{ GB/s}$ |
+| FFT $L=4096$ pruned | $(1000,\ 268\text{M})$ | $884\ \mu\text{s}$ | $3,645\text{ GB/s}$ |
+| FFT $L=8192$ pruned | $(10000,\ 67\text{M})$ | $255\ \mu\text{s}$ | $3,161\text{ GB/s}$ |
+| FFT $L=16384$ pruned | $(50000,\ 16\text{M})$ | $94\ \mu\text{s}$ | $2,145\text{ GB/s}$ |
+| FFT $L=32768$ pruned | $(500000,\ 16\text{M})$ | $130\ \mu\text{s}$ | $1,544\text{ GB/s}$ |
+| Multi-pass $L=32768$ | $(2.5\text{M},\ 16\text{M})$ | $342\ \mu\text{s}$ | $589\text{ GB/s}$ |
+| Steady-state | $(6\text{M},\ 16\text{M})$ | $29.5\ \mu\text{s}$ | $6,826\text{ GB/s}$ |
+
+Across all 26 unit/adversarial tests (including alternating Nyquist, constant, impulse, high-frequency sine, odd/tiny sizes $n_1 \in [1, 10003]$, multi-pass up to $n_0 = 5.5\text{M}$, steady-state up to `INT_MAX`, and double-compute), GPU errors are consistently $0.0\times\text{–}0.76\times$ of the FP32 CPU baseline deviation from FP64 reference.
+
+## 5. What We Would Do With More Time
+
+- **Block-level SMEM temporal blocking for $n_0 \in [15, 40]$**: A 2048-element/block double-buffered SMEM direct stencil (or $L = 1024$ with `R_LAST = 2` fused into Stage 1) could potentially narrow the small dip between `KPT=24` ($n_0 = 14$) and pruned $L = 2048$ ($n_0 = 80$).
+- **Fused persistent / multi-tile FFT blocks for $L = 1024$ and $L = 2048$**: Processing 2 adjacent tiles per CTA or using TMA asynchronous bulk copies (`cp.async.bulk`) on Blackwell could further hide global-to-SMEM load latency on $L = 16384$ and $L = 32768$.
+- **Direct spatial Gaussian FIR for very large $n_0$ on small-to-moderate $n_1$**: When $n_1$ is small ($n_1 \le 4096$) and $n_0 > 2\times 10^6$, a single block-local DST-I or single-pass $L$ chosen from $2(M+1)$ could avoid multi-pass overhead entirely.
+- **FP32x2 / compensated twiddles for `PURE_INTERIOR`**: Investigate whether a zero-`LDG` single-step magnitude renormalization of `w2, w4, w8` in `apply_tw16` brings interior Nyquist-defect error down to the exact-LUT level with zero throughput penalty.

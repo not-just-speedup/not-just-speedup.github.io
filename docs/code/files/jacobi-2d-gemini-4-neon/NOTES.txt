@@ -1,0 +1,96 @@
+# Candidate Notes — `jacobi-2d` (FP32)
+
+## 1. Problem & Hardware Characterization
+
+The baseline in `baseline/compute.inc` implements PolyBench `jacobi-2d`: `n0` iterations of two alternating 5-point FP32 stencils on an `n1 x n1` grid (`buf0 -> buf1`, `buf1 -> buf0`) over interior indices `[1..n1-2]^2`. Both `buf0` and `buf1` are designated outputs, and all boundary elements (`i == 0`, `i == n1-1`, `j == 0`, `j == n1-1`) are never written and must be preserved bit-for-bit.
+
+Microbenchmarking the target GPU (`NVIDIA B300 SXM6 AC`, `sm_103`, 148 SMs, 228 KB SMEM/SM with 232,448 B opt-in/block, 126.5 MB L2 cache, 267.7 GB HBM, ~6.0 TB/s memory copy bandwidth) revealed two decisive architectural facts:
+1. **1:64 native FP64 throughput**: Native FP64 runs at only ~1.01 TFLOP/s, whereas FP32 FMA runs at ~65–75 TFLOP/s (`SGEMM` 65.7 TFLOP/s, `BF16x9` emulated FP32 GEMM 229.4 TFLOP/s).
+2. **Massive on-chip SRAM**: 228 KB SMEM/SM + 126.5 MB L2 makes single-block SMEM transforms feasible up to length `P = 12,288` (`n1 <= 6,145`) for Bluestein and `L = 8,192` (`n1 = 8,193`) for direct smooth FFT, and enables L2-resident batched Bailey 4-Step transforms up to the 64 GiB contract ceiling (`n1 <= 92,681`).
+
+---
+
+## 2. Approach & Rationale
+
+### Key Mathematical Insight: Exact 2D DST-I Eigenbasis Evolution
+On the `M x M` interior (`M = n1 - 2`, `L = M + 1`), the 5-point stencil operator $A$ with alternating inhomogeneous Dirichlet boundary forcing $F_0$ (from `buf0`'s border) and $F_1$ (from `buf1`'s border) is exactly diagonalized by the orthonormal 2D Type-I Discrete Sine Transform (2D DST-I), with eigenvalues:
+$$\lambda_{p,q} = 1 - \delta_{p,q}, \qquad \delta_{p,q} = 0.8\left(\sin^2\frac{\pi p}{2L} + \sin^2\frac{\pi q}{2L}\right) \in (0, 1.6), \qquad \lambda_{p,q} \in (-0.6, 1).$$
+
+In spectral space, the `2*n0 - 1` half-steps producing `buf1` ($U^{(2n_0-1)}$) collapse to a closed form computable in $O(\log n_0)$ operations per mode — making runtime **independent of `n0`** even up to `n0 = INT_MAX`:
+$$\hat{U}^{(2n_0-1)} = \lambda^{2n_0-1}\hat{U}^{(0)} + \hat{F}_0\frac{1-\lambda^{2n_0}}{1-\lambda^2} + \lambda\hat{F}_1\frac{1-\lambda^{2(n_0-1)}}{1-\lambda^2}.$$
+To eliminate catastrophic cancellation near $\lambda \to 1$ (low-frequency modes), we evolve $\eta = 1 - \lambda^2 = \delta(2-\delta)$ and $p_k = 1 - (1-\eta)^k$ directly using binary exponentiation via the identity $p_{a+b} = p_a + p_b - p_a p_b$.
+
+We then invert **only `buf1`** back to physical space (retaining full double-float interior precision) and obtain `buf0` ($U^{(2n_0)}$) with a single exact double-float 5-point stencil pass (`final_stencil_df_kernel`) using the double-float `buf1` interior and original `buf1` border. This cuts inverse transform work in half while preserving exact FP32 rounding for both outputs.
+
+### Double-Float (48-bit) Emulated Arithmetic
+- Pure FP32 spectral transforms accumulate `~1e-6–1e-5` rounding error on constant inputs (where the CPU FP32 baseline has `0.0` error), risking failure under the strict FP64 acceptance formula.
+- Native FP64 is ~65x slower than FP32 on B300.
+- Emulating 48-bit mantissa **double-float** (`struct df { float hi, lo; }`) with explicit IEEE intrinsics (`__fadd_rn`, `__fsub_rn`, `__fmul_rn`, `__fmaf_rn` to prevent FMA contraction) runs on the full-rate FP32 pipelines while achieving `~1e-12` intermediate accuracy and `<= 2.98e-8` final FP32 error (~0.5 ULP exact rounding, ~20x more accurate than the CPU FP32 baseline, and exact `0.0` on constant inputs).
+
+### Six-Mode Hybrid Auto-Dispatch (`pb_setup`)
+All device memory allocation, twiddle/chirp precomputation, and calibrated mode selection occur in `pb_setup`; `pb_upload` and `pb_download` perform only `cudaMemcpy` (H2D/D2H) with zero device kernels.
+
+1. **`MODE_NOOP` (`n1 <= 2`)**: No interior elements exist; returns immediately, preserving both buffers bit-for-bit.
+2. **`MODE_DIRECT_SMEM1` (`(n1 <= 48 && n0 <= 64) || (n1 <= 96 && n0 <= 16)`)**: Single-block 100%-SMEM FP32 stencil with 2D thread indexing (zero integer divisions) and `+1` bank-conflict padding.
+3. **`MODE_DIRECT_2D` (small `n0` where direct beats spectral, or HBM fallback)**: 2D overlapped SMEM temporally-blocked FP32 stencil (`K in {16, 12, 8, 4, 2}` covering all even `2*n0`), saving `buf1` on step `K-2` of the final pass and swapping `d_buf0`/`d_alt` on odd pass count after copying borders inside `pb_compute`. Matches CPU FP32 bit-for-bit.
+4. **`MODE_SPECTRAL_SMOOTH` (smooth $L = n_1 - 1 = F_1 F_2 8^k \le 8192$, $F_1 \in \{1,3,5\}, F_2 \in \{1,2,4\}$)**: Direct length-$L$ R2C DST-I preprocessing packing 2 real rows per complex FFT (no Bluestein overhead), interleaved 128-bit `cdf` SMEM (`LDS.128`/`STS.128`, bank-conflict-free `i + (i >> 3)` indexing), and compact SMEM extraction for $L \in \{4096, 8192\}$ to double SM occupancy at $L = 4096$ and fit $L = 8192$ inside 228 KB SMEM.
+5. **`MODE_SPECTRAL_BLUESTEIN` (non-smooth $n_1 \le 6145$)**: Single-block SMEM 2-row-packed Bluestein convolution of length $P = F_1 F_2 8^k \ge 2L - 1$ ($P \le 12,288$). Uses DIF forward + transposed coalesced `b_hat` + DIT inverse to eliminate bit-reversal entirely, fuses zero-pruned outer radix-2 when `F1 == 1 && F2 == 2`, packs parameters in constant-memory `SpecArgs`, uses interleaved 128-bit SMEM (`LDS.128`/`STS.128`), and achieves **0 bytes stack frame / 0 register spills** at 64 registers for all non-`F1==5` `BT = 512 / 1024` kernels.
+6. **`MODE_SPECTRAL_BAILEY` ($n_1 \in [6146, 92681]$, full 64 GiB domain)**: L2-batched (~38 MB `d_scratch` budget so working set fits inside B300's 126.5 MB L2) Bailey 4-Step double-float Bluestein ($P = R \times C$ up to $384 \times 512 = 196,608$), fusing innermost radix-8 + `b_hat` multiply in Step 2, fusing zero-pruned outer radix-2 for $R = 128$ in Steps 1 and 3, and using a single-load chunked SMEM prefix sum in Step 4.
+
+All 2D kernel grids (`spectral_evolve_2d_kernel` using `dim3(32, 8)`, `transpose_df_kernel`, `final_stencil_df_kernel`, `jacobi_2d_smem_kernel`) stay well within CUDA's 65,535 `gridDim.y` limit up to `n1 = 92,681`.
+
+---
+
+## 3. Alternatives Tried
+
+- **2.5D Wavefront Temporally-Blocked Direct Stencil**: Achieved only 2.0–2.9 TFLOP/s due to the 16-stage serial register dependency chain and low block count. Replaced by 2D overlapped SMEM tiling (`K = 16`, `96x96` tile), which achieved 3.7–3.9 TFLOP/s and `0.071 ms` on `n0 = 1, n1 = 4096`.
+- **cuBLAS FP32 / `BF16x9` GEMM 2D DST-I**: Faster than naive direct for small `n1`, but scales as $O(N^3)$ (slower than $O(N^2 \log N)$ FFT for large `n1`) and produces `1e-6–1e-5` rounding errors on constant inputs where CPU FP32 baseline error is `0.0`.
+- **Native FP64 Spectral Transform**: Unviable on B300 due to 1:64 native FP64 throughput (1.01 TFLOP/s); emulated 48-bit double-float is ~20x faster with identical FP32 output accuracy (~0.5 ULP).
+- **Per-`P` Template Instantiations & Fused Column (`col_fused`) Kernels**: Instantiating 15 Bluestein + 12 Smooth templates with fused fwd+evolve+inv columns pushed `nvcc`/`cicc` compile time past 120s and caused heavy register spilling. Refactoring to runtime-`P` `SpecArgs` + separate `spectral_evolve_2d_kernel` + `__noinline__` `df_prefix_sum_pair_smem` reduced total build time to ~65s while eliminating spills.
+- **Split `s_r`/`s_i` (`df`, 64-bit) vs. Interleaved `cdf` (`float4`, 128-bit) SMEM**: Split SMEM incurred 72 B spills at 64 registers and doubled SMEM load/store instruction count. Interleaved `cdf` SMEM with `i + (i >> 3)` padding eliminated bank conflicts on both stride-1 and stride-8 accesses, halved SMEM instructions via `LDS.128`/`STS.128`, and dropped spills to 0 B.
+
+---
+
+## 4. Measured Performance & Verification Summary
+
+Warmed-up `pb_compute` times measured on B300 (`sm_103`), alongside accuracy against exact FP64 reference (all tests had `0` boundary bit mismatches and `0` nonfinite outputs):
+
+| Case | `n0` | `n1` | Engine | `pb_compute` | Max Abs Error vs FP64 | CPU FP32 Error |
+|---|---:|---:|---|---:|---:|---:|
+| Mini | 20 | 30 | `DIRECT_SMEM1` | `0.028 ms` | `8.24e-08` | `8.24e-08` |
+| Small | 40 | 90 | `BLUESTEIN (P=192)` | `0.055 ms` | `1.48e-08` | `1.56e-07` |
+| Medium | 100 | 250 | `BLUESTEIN (P=512)` | `0.066 ms` | `2.81e-08` | `3.36e-07` |
+| Large | 500 | 1,300 | `BLUESTEIN (P=3072)` | `0.418 ms` | `2.43e-08` | `4.94e-07` |
+| XLarge | 1,000 | 2,800 | `BLUESTEIN (P=6144)` | `1.662 ms` | `2.89e-08` | `4.66e-07` |
+| 4K (1 step) | 1 | 4,096 | `DIRECT_2D (K=2)` | `0.071 ms` | exact match | exact match |
+| 4K (10 steps) | 10 | 4,096 | `DIRECT_2D (K=16+4)` | `0.488 ms` | exact match | exact match |
+| 4K (500 steps) | 500 | 4,096 | `BLUESTEIN (P=8192)` | `3.237 ms` | `2.70e-08` | `5.26e-07` |
+| 4K (5000 steps) | 5,000 | 4,096 | `BLUESTEIN (P=8192)` | `3.297 ms` | ~`2.7e-08` | — |
+| 4K+1 Smooth | 500 | 4,097 | `SMOOTH (L=4096)` | `1.628 ms` | `2.89e-08` | `5.68e-07` |
+| 5K (Radix-5) | 500 | 5,000 | `BLUESTEIN (P=10240)` | `5.339 ms` | `2.98e-08` | `5.44e-07` |
+| 6K | 500 | 6,000 | `BLUESTEIN (P=12288)` | `7.478 ms` | `2.95e-08` | `6.12e-07` |
+| 6K+1 Smooth | 500 | 6,145 | `SMOOTH (L=6144)` | `4.018 ms` | `2.96e-08` | `6.93e-07` |
+| 8K Bailey | 500 | 8,192 | `BAILEY (128x128)` | `17.474 ms` | `2.93e-08` | `6.06e-07` |
+| 8K+1 Smooth | 500 | 8,193 | `SMOOTH (L=8192)` | `7.211 ms` | `2.97e-08` | `5.94e-07` |
+| 10K Bailey | 500 | 10,000 | `BAILEY (192x128)` | `34.005 ms` | `2.98e-08` | `5.15e-07` |
+| 16K Bailey | 500 | 16,384 | `BAILEY (256x128)` | `82.175 ms` | `2.98e-08` | — |
+| 25K Bailey | 300 | 25,000 | `BAILEY (256x256)` | `265.84 ms` | `2.94e-08` | `8.42e-07` |
+| 33K Bailey | 500 | 33,000 | `BAILEY (384x256)` | `628.63 ms` | `3.19e-08`* | — |
+| 50K Bailey | 500 | 50,000 | `BAILEY (256x512)` | `1,351.75 ms` | `3.48e-08`* | — |
+| 66K Bailey | 500 | 66,000 | `BAILEY (384x512)` | `3,289.56 ms` | `3.49e-08`* | — |
+
+*\*Verified on analytical multi-mode eigenfunction inputs (FP32-quantized input floor ~`3e-8`).*
+
+Additional verification passed with 0 failures:
+- `check-example`: `0.0` error on both outputs, build + run time `68s`.
+- Odd, tiny (`n1 = 1, 2, 3, 4, 5, 31, 97, 131`), adversarial (`const 1.0`, `const 0.7`, checkerboard), and huge `n0 = 2,000,000,000` inputs.
+- Double `pb_compute()` after a single `pb_upload()` across all 5 active engines (`SMEM1`, `DIRECT_2D`, `SMOOTH`, `BLUESTEIN`, `BAILEY`), rotated host buffer addresses, API error checks, and 20x `pb_setup`/`pb_teardown` cycles (`0 bytes` leaked).
+
+---
+
+## 5. What I Would Do With More Time
+
+1. **Direct Smooth Bailey (`n1 > 8193` with smooth `L`)**: Extend `MODE_SPECTRAL_SMOOTH` to Bailey 4-Step when $L = n_1 - 1 > 8192$ is smooth (e.g., `n1 = 16385, 32769, 65537`), avoiding Bluestein's 2x padding and forward+inverse FFT cost for smooth giant grids (~2.5x speedup on those shapes).
+2. **Fused Transpose + Step 1 / Step 4 in Bailey**: Fuse the global `transpose_df_kernel` with Bailey's batched reads/writes (or tile Bailey column batches in 2D blocks) to cut HBM traffic between Row and Column passes by ~25% on `n1 >= 16384`.
+3. **Warp-Level Register-Only Radix-16 / Radix-8 Shuffles**: For `P <= 1024` and Bailey's `R = 128/256` & `C = 128/256` sub-FFTs, replacing intermediate SMEM rounds with warp shuffle + register butterflies could save another 15–25% on medium and Bailey sizes.
+4. **Runtime Autotuning in `pb_setup`**: On shapes near the Direct-vs-Spectral crossover (`n0 ~ 20..80`), benchmarking 1 quick untimed pass of Direct 2D vs Spectral inside `pb_setup` (where timing is unscored) would make mode dispatch optimal on any unseen GPU architecture without relying on B300-calibrated constants.

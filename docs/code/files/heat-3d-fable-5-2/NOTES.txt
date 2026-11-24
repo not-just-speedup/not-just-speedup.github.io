@@ -1,0 +1,155 @@
+# NOTES — case-04 (7-point 3D Jacobi stencil, FP32)
+
+## What the computation is
+
+`n0` time steps; each is two Jacobi sweeps over the interior of an `n1³` grid
+(`buf0 → buf1`, then `buf1 → buf0`). The six faces of both buffers are never
+written. So there are `2·n0` sweep levels; `buf0` ends at level `2·n0`, `buf1`
+at level `2·n0 − 1`, and a face cell alternates between its `buf0` and its
+`buf1` value from level to level.
+
+## Approach
+
+**Arithmetic.** Every sweep level of every cell is evaluated with the
+baseline's own rounding sequence: `((x1 + x2) + x3)·0.125 + c` with
+`x = (p − 2c) + m`, written as `fma(-2,c,p) + m` and `fma(0.125, s, c)`. The
+multiplications by 2 and 0.125 are exact, so the fused forms round exactly where
+the baseline rounds. The output is **bit-identical to the CPU baseline** (0
+differing cells) unless an intermediate `0.125·x` product is subnormal, which
+does not happen for inputs drawn like the published generator's. For
+subnormal-scale inputs the last bits can differ (the baseline rounds three
+products, I round one). Measured against a double-precision run of the same
+computation on such inputs, my largest error was about half the baseline's
+(1.5e-45 vs 3.2e-45), inside the acceptance formula even with
+`factor = 1, atol = 0`. A variant that also reproduces the three separate
+products is bit-identical on subnormals too, but cost 10–12 % of the compute
+time; I did not ship it.
+
+**Schedule: temporal blocking.** The sweeps are run as *passes* of `S = 4`
+sweeps (one `S = 2` pass when `2·n0 mod 4 = 2`). A pass reads level `s` from one
+array and writes level `s+S` to another; the levels in between only live in
+registers. The last pass also writes level `2·n0 − 1`, which is `buf1`'s final
+content. Three device arrays are used: two that ping-pong the even levels, and
+the `buf1` array, which supplies `buf1`'s face values.
+
+**Pass kernel.**
+- A thread block is a tile: one warp wide in `k`, up to 16 thread rows in `j`,
+  a chunk of planes in `i`. Tiles overlap by `S` cells per side and only write
+  their core (overlapped tiling), so blocks are independent.
+- `i` is streamed. A thread owns `H×W` cells (8×1 or 4×2) and keeps, for every
+  level, the three planes that level needs in registers; the sliding window is
+  rotated by unrolling three plane steps, so there are no register moves.
+- `k` neighbours outside the thread's own columns come from the neighbouring
+  lanes by warp shuffle; `j` neighbours outside its own rows go through a small
+  double-buffered shared-memory ring with one barrier per plane.
+- Face cells take the value they had two levels earlier. Their level-1 value
+  (the `buf1` face) is fetched one plane ahead into a register that is dead at
+  that point, or, for the `k` faces, streamed through level 0 by a "ghost lane"
+  placed next to the face.
+
+**Small grids.** When a whole sweep is shorter than a few launch overheads, the
+plan is plain one-thread-per-cell sweeps, replayed from a CUDA graph recorded in
+`pb_setup` (about 0.7 µs per kernel instead of about 2 µs).
+
+**Plan selection in `pb_setup`.** Setup times candidate configurations on
+zero-filled scratch arrays (kernel family, tile height, number of `i` chunks,
+row-hook variant, and `S = 4` / `S = 2` / plain sweeps) and keeps the fastest
+plan for the shape. It uses no input data. It took 0.07–0.85 s for `n1 ≤ 1200`
+and 4.0 s at `n1 = 2000`.
+
+## Why this design
+
+Profilers were not available, so I measured the device with microbenchmarks and
+ablations of the real kernel. What they showed on this GPU (148 SMs):
+
+| operation (per warp, per SM) | throughput |
+|---|---|
+| FP add / FMA | ~7.9 per ns |
+| shared-memory load or store | ~2 per ns, ~14 ns latency |
+| warp shuffle | ~2 per ns, ~12 ns latency |
+| taken branch | ~0.7 ns each |
+| global load/store in the real kernel | ~1 ns each |
+
+So arithmetic is cheap and data exchange between threads is the cost. The plain
+one-thread-per-cell kernel does 8 global accesses per update and tops out near
+250–310 G updates/s. The pass kernel does about 0.5 global accesses and 2–2.5
+shuffle/shared operations per update.
+
+## What else I tried
+
+- **Plain kernel, one launch per sweep** — the reference point in the table
+  below.
+- **One-sweep register-streaming kernel with global neighbours, no barrier** —
+  440–600 G/s; beaten by temporal blocking above `n1 ≈ 150`.
+- **64×64 tiles with all neighbours in shared memory** (first blocked version) —
+  about 0.67e12 updates/s at `n1 = 1200`; shared-memory traffic was the limit.
+- **16-cell threads for `S = 2`** — spilled registers and never won.
+- **Per-warp specialised boundary code paths (4 paths × 3 rotations)** —
+  correct, but the register allocator started spilling in the hot path and the
+  interior got 1.7× slower; replaced by two paths plus cheap hooks.
+- **Boundary values by dependent global loads** — one boundary warp stalled the
+  whole block at the barrier (tiles up to 2× slower); replaced by the
+  fetch-ahead and ghost-lane schemes.
+- **Graph replay for the blocked passes as well** — 2–4 % at `n1 = 100–200`;
+  not kept.
+- **Closed-form / spectral solve of the linear recurrence** — considered and not
+  built. It would be far faster for `n0 ≫ n1`, but it is a different numerical
+  method rather than a translation of the baseline, and it would not reproduce
+  the baseline's bits.
+
+## Performance I expect
+
+Measured with my own driver (same phase boundary as the runner, best of 3
+`pb_compute` calls, idle GPU). These are development measurements, not the
+scored experiment.
+
+| `n1` | `n0` | plain kernel | this candidate | ratio |
+|---|---|---|---|---|
+| 20 | 100 | 0.48 ms | 0.27 ms | 1.8× |
+| 40 | 1000 | 3.74 ms | 2.89 ms | 1.3× |
+| 64 | 1000 | 4.54 ms | 3.49 ms | 1.3× |
+| 120 | 500 | 6.56 ms | 4.31 ms | 1.5× |
+| 200 | 1000 | 49.9 ms | 22.5 ms | 2.2× |
+| 300 | 200 | 41.3 ms | 11.6 ms | 3.6× |
+| 400 | 100 | 47.0 ms | 13.9 ms | 3.4× |
+| 600 | 40 | 61.7 ms | 14.6 ms | 4.2× |
+| 800 | 20 | 72.4 ms | 17.8 ms | 4.1× |
+| 1200 | 10 | 123.4 ms | 27.2 ms | 4.5× |
+| 2000 | 4 | 227.3 ms | 52.1 ms | 4.4× |
+
+That is about 0.38e12 cell updates/s at `n1 = 120`, 0.9e12 at `n1 = 300–400`
+and 1.1–1.3e12 at `n1 ≥ 600`. Below `n1 ≈ 80` the run is bound by per-kernel
+overhead (about 1.3–1.8 µs per sweep with graph replay). The last pass of every
+`pb_compute` writes two arrays and costs about 1.2–1.45× a normal pass, which
+matters when `n0` is small. The plan is picked by timing, so the numbers move by
+a few percent from run to run.
+
+## Verification
+
+- Randomised cases compared bit for bit with the baseline kernel (`n1` 3…330,
+  `n0` 1…7, forced tile configurations covering everything the tuner can choose
+  and more, one or two `pb_compute` calls per upload): about 11 000 on the final
+  pass kernel and about 12 000 on earlier versions, no differing cell.
+- The submitted code with its tuner active (only comments changed afterwards):
+  289 shapes (`n1` 1…257, `n0` 1…5) and 90 many-step shapes (`n1` 3…90,
+  `n0` 100…600), each with two `pb_compute` calls and two invocations: no
+  differing cell.
+- Larger sizes, bit for bit: `n1` = 513, 640, 777, 1000, 1201, 2047, 2048.
+- `check-example` and twelve `check-example --self-check` runs on the submitted
+  code: maximum absolute difference 0.0.
+
+The development harness (driver, stress test, microbenchmarks, earlier kernel
+versions) is in `/workspace/dev`; it is not part of the submission.
+
+## With more time
+
+- A fast path for tiles on a `k` face (they run about 14 % slower than interior
+  tiles) and for the few plane steps next to the `i` faces.
+- For `n1` around 100–200 the remaining cost is per-pass overhead plus the `i`
+  halo of short chunks; a persistent kernel running several passes per launch
+  would address the first.
+- Pair-wide (`float2`) global loads for the two-column family when `n1` is
+  even, which the alignment rules allow; I estimated about 10 % and did not
+  build it.
+- The cheaper way to be bit-identical on subnormal inputs as well: switch to the
+  three-product stencil only when a pass sees values small enough to matter.

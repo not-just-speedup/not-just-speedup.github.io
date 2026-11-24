@@ -1,0 +1,91 @@
+# NOTES
+
+## Task
+GPU translation of the PolyBench floyd-warshall kernel: in-place min-plus closure of an n0 x n0 int32 matrix with entries in
+[0,256] (`buf0[i][j] = min(buf0[i][j], buf0[i][k] + buf0[k][j])`, k outermost); exact integer output. Only `pb_compute` (and the
+runner's device sync after it) is timed. n0 is not disclosed (the public example has n0 = 5).
+
+## What limits this problem
+* Everything is exact integer arithmetic and every value fits in 16 bit (entries <= 256, padding INF16 = 1000, sums < 2000), so all
+  solvers work on packed int16 pairs with the native `VIADDMNMX.S16x2` (`__viaddmin_s16x2`): two relaxations per lane-instruction.
+* For realistic n the time is *latency*, not throughput.  Measured on the B300: trivial graph launch + completion ~13 us, a graph
+  kernel node ~1.2 us, a grid-wide barrier ~1.1 us, one warp closing a 32x32 tile 1.8 us, L2->SM bandwidth of one SM ~130 GB/s.
+  A blocked Floyd-Warshall has one chain of 3 dependent phases per pivot block (>= 3-7 us per round), i.e. 100+ us at n = 500.
+* The input domain is "uniform random ints in [0,256]" (the self-check confirms P(entry = 0) = 1/257).  The zero-weight edges are
+  a random digraph with average degree n/257; for n >~ 400 it has a giant strongly connected component (SCC) that grows to almost
+  all vertices.  All vertices of a zero-weight SCC are at distance 0 from each other, so the SCC can be contracted into a single
+  vertex *exactly* (its row / column = minima over the core).  The closure of the small reduced graph (m = n - |SCC| + 1 vertices:
+  ~250 at n = 400, ~180 at n = 500, ~45 at n = 1000, 1-5 for n >= 2000) is computed and expanded back
+  (`out[i][j] = D[map(i)][map(j)]`).  The contraction is valid for *any* input; when it does not pay off (no big SCC, reduced graph
+  too large) the kernels decline and a dense solver runs on the untouched input, so correctness never depends on the distribution.
+
+## Structure of solution.cu
+Dense solvers (exact for every n and every input):
+* `k_small_fw`  n <= 64: one block, register-resident closure, pivots processed in pairs.
+* `k_sq`        64 < n <= 512 and the reduced problem 64 < m <= 320: persistent cooperative kernel computing the min-plus
+  *squaring* closure P <- min(P, P (x) P) until nothing changes (<= ceil(log2 n) iterations; uniform random data needs 5-6, a
+  path graph needs log2 n).  One 32x32 output tile per block and iteration, the K range is split over 16 warps (4x4 register
+  micro-tile), a custom grid barrier per iteration also carries "number of blocks that changed something"; iteration 0 reads the
+  int32 source directly.  2 s timeout -> abort flag -> the host falls back to the engine (then v1).
+* `k_fw_engine` n <= 1024: persistent dependency-driven blocked FW (32x32 tiles, dynamic task queue in wavefront order, per-tile
+  version / reader counters, a dedicated watchdog block that also resets the flags).  Fallback of `k_sq`, dense solver for
+  512 < n <= 1024.
+* v1: multi-kernel blocked FW (64x64 tiles) for n > 1024 and as the last-resort fallback.
+
+Fast path (n >= 385; every variant is captured in CUDA graphs):
+1. F1 `k_bitmap` (or `k_bitmap2` with 16-byte loads for n % 4 == 0, n >= 2048): row / column zero bitmaps (32x32 bit-matrix
+   transpose with shuffles) plus out/in degrees of the zero graph (atomics).
+2. F2 `k_scc2`: 2-block cluster, block 0 forward / block 1 backward BFS from the vertex with the largest min(out,in) degree.
+   n <= 1280: the direction's bitmap is copied to shared memory (cp.async) and one warp runs the whole BFS in registers (frontiers
+   are thin, so no block-wide barriers); n > 1280: multi-warp direction-optimising BFS on the L2-resident bitmaps.  A partial BFS is
+   still exact (only F-cap-B is contracted).  Block 0 merges: core bits, prefix sums, vertex maps.
+3. F3 `k_build_m`: reduced matrix (also clears the degree arrays for the next call).
+4. F4 `k_small_fw` (m <= 64) or `k_sq` (m <= 320): closure of the reduced matrix; both are launched, the inapplicable one exits at once.
+5. F5: n < 1200 `k_expand` writes the result in place; n >= 1200 the output buffer is zero-filled by `k_zero` (64 blocks, forked
+   *after* F1 into a parallel graph branch) and `k_fixup` writes only the rows / columns of the non-core vertices.
+   The status of the whole fast path (declined / done) travels through a mapped host word that is read for free after the sync.
+
+## Robustness
+* Every spinning kernel has a watchdog / timeout; on failure the host falls back (k_sq -> engine -> v1; fast path -> dense) and the
+  result stays exact.  Launch errors (e.g. of a cooperative launch) are handled the same way.
+* pb_setup probes cooperative launch, clusters, mapped memory and graph capture of the fork/join topology; a failing probe
+  disables the corresponding path (results stay correct, only slower).
+* Testing (all against an exact CPU Floyd-Warshall unless noted): ~25 structured input families (uniform, no zeros, all-256, all-0,
+  chains, zero cycles, sparse zeros, block structure, symmetric, PolyBench-like patterns, giant zero SCC + 60..400 outside vertices, ...);
+  every n = 1..1100 for 5 families; every n = 65..512 for 6 families; every n = 380..460 for 10 families; boundary and large sizes
+  (up to 4500, n % 4 != 0 included) for all families; the public example and `--self-check` at many sizes; 400 consecutive
+  computes with fresh data per repetition at several sizes; every compute run twice per upload; fault injection (a block that never
+  arrives at the barrier, engine tasks that never publish) exercising every fallback; byte-for-byte comparison of fast path vs dense
+  path at n = 4096, 4100, 5600, 6000, 8192, 12000, 16384, 20000.  ~13,500 sweep jobs on the final file, 0 failures.
+
+## Performance (B300, harness timing of pb_compute + device sync, fresh random data per repetition, median, microseconds)
+The "before" column is the solution at the start of the last work session (fast path with the dependency engine / single-block
+closure); a dense multi-kernel blocked FW needs 4.3 ms at n = 4096 and hundreds of us at n = 500.
+
+| n | 1 | 5 | 33 | 64 | 65 | 100 | 128 | 129 | 180 | 200 | 256 | 300 | 384 | 385 | 400 | 448 | 500 | 600 | 700 | 1000 | 1500 | 2000 | 2800 | 4096 | 5600 |
+|---|---|---|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|-----|-----|-----|-----|-----|-----|------|------|------|------|------|------|
+| before | 12.4 | 12.8 | 16.9 | 19.9 | 25.8 | 34.6 | 40.0 | 55.0 | 60.9 | 66.3 | 74.4 | 86.9 | 102 | 110 | 108 | 117 | ~100 (92-187) | 100 | 70 | 53 | 51 | 53 | 60 | 73 | 114 |
+| now | 12.6 | 11.6 | 14.5 | 16.9 | 27.9 | 30.9 | 30.9 | 33.7 | 37.6 | 38.9 | 40.0 | 44.8 | 48.4 | 64.2 | 62.7 | 60.5 | 58.5 | 56.4 | 51.7 | 46.5 | 50.7 | 51.3 | 50.8 | 58.8 | 84.1 |
+
+The floor of this environment (a trivial kernel through the same graph launch + sync) is ~11-13 us.  n = 1..64 sit at that floor
+plus 1-6 us; 65..384 are dominated by 5-6 barrier-separated squaring iterations (~3 us each); 385..1000 by F2 (~14-16 us) and the
+reduced-problem solver; n >= 2000 by F1/F2 (memory latency / bandwidth) and, above 4096, by the 4n^2-byte read of F1 and write of the output.
+
+## Things tried and rejected
+* Edge-list BFS instead of bitmap BFS: list construction cost dominated.  Programmatic dependent launch between fast-path kernels: no gain.
+* In-loop watchdog in the engine's poll loops: 2-8 us slower; replaced by a dedicated watchdog block.
+* 32 ballots for the bit-matrix transpose: +14 us at n = 4096; 5 shuffle stages instead.
+* Cluster-resident (DSMEM) blocked FW for mid-size n: the per-round chain (32-step tile closure 1.8 us + 2 cluster barriers + exchange) is
+  no better than repeated squaring, which needs only ~6 sequential steps.
+* Zero-filling the output concurrently with F1 (HBM contention slows F1: +6..70 us); after F1 with 64 blocks it is a net win for n >= 1200;
+  splitting the fill into an early and a late part, other block counts: worse.
+* Dropping the no-op kernel node of the fast graph for large n, a different top-down/bottom-up switch rule in the BFS, batching the
+  iteration-0 loads of k_sq (slower), polling a mapped flag instead of cudaStreamSynchronize (only -1.3 us and completion cannot be
+  signalled safely from k_expand's many blocks): no gain.
+
+## What I would do with more time
+* Faster F2 for n >= 2000 (its BFS levels are L2-latency chains; a multi-SM cluster BFS or a compressed sparse-row bitmap could save ~5-8 us).
+* F1 runs at ~60% of the HBM roofline for n >= 4096 (transposition / atomics on top of the 16-byte reads).
+* k_sq: half (32x16) tiles for better balance at 384 < n <= 512, a fence-free data-carrying barrier (~0.4 us per iteration),
+  chaotic (barrier-less) relaxation with a termination-detection protocol, a cluster/DSMEM variant for 64 < m <= 128.
+* v1 (n > 1024, dense fallback only) could use the squaring or engine ideas; it is only reached for inputs without a giant zero SCC.

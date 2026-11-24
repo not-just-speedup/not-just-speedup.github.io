@@ -1,0 +1,150 @@
+# ludcmp (case-05) on B300 — notes
+
+## What is computed
+
+The baseline factors `buf0 = A` as `LU` (Doolittle, no pivoting), then solves
+`L y = b` (`buf1 = b`, `y` in `buf3`) and `U x = y` (`x` in `buf2`).  Only
+`buf2` is a designated output, and the task says it is accepted by how well it
+satisfies the defining relations, not by element-wise agreement.  The relation
+visible in the output is `A x = b`.  So for n >= 25 the candidate solves
+`A x = b` iteratively, to better than the accuracy of the float LU and without
+forming L and U.  For n <= 24 it replays the baseline's own arithmetic exactly
+(see below).
+
+## Approach
+
+The input domain guarantees a unit diagonal and strict diagonal dominance by
+rows and columns.  The published generator (seen in `check-example`) makes
+`A = I + H + D`, where:
+
+- `H` holds two "heavy" entries per row and per column, |h| in [0.15, 0.35];
+- `D` is a dense background with |d| <= 2^-(ceil(log2 n)+2).
+
+The solver is preconditioned iterative refinement:
+
+- **Preconditioner M.** M is the diagonal plus every off-diagonal with
+  |a_ij| > 1/7.  Strict row dominance allows at most six such entries in a row,
+  so a fixed 8-wide ELL structure can never overflow in-domain.  For the
+  generator this captures exactly `I + H`.  The structure is extracted in the
+  first pass over A, which also forms the residual of `x0 = b`.
+- **Accurate residual.** Each iteration computes `r = b - A x` accurately:
+  - big products are summed exactly as float-float pairs (TwoProd/TwoSum);
+  - the small entries are summed in float with the big ones masked out;
+  - no FP64 is used in the hot loops (B300's FP64 rate is 1/64 of FP32).
+- **Correction.** `x += P r`, where `P ~ M^-1` is applied by 4–6 Jacobi sweeps
+  on the sparse M.
+- **Convergence.** The contraction per iteration is about `0.2/sqrt(n)`, so
+  3–4 passes over A suffice (x0 = b gives a factor of 2 for free).
+- **Stopping rule.** The loop stops when `zeta * rho <= 2^t * max|x|`, where
+  zeta = max|correction| and rho = observed contraction.  t is -26 for n<64,
+  -25 below 1000 and -24 above, or it stops when the corrections stall at the
+  rounding level.
+- **Measured quality (iterative path, n >= 25).** Normwise backward error is
+  0.1–0.5 u for every size tested (u = 2^-24).  The CPU baseline's own error is
+  ~2 u at n = 25, ~17 u at n = 1000, and grows with n.  On inputs drawn with
+  check-example's own generator, the residual ratio (ours / baseline's) was
+  <= 0.54 at n = 25 and ~0.04–0.2 for larger n.
+- **Robustness fallback.** If the structure is unusable (out of domain) or the
+  iteration does not converge within 48 steps (possible for in-domain
+  matrices with dominance margins near zero), pb_compute falls back to
+  cuSOLVER `sgetrf` without pivoting (like the baseline) plus three steps of
+  refinement.  I verified this with forced fallback and with all-positive
+  dense matrices whose Jacobi rate is ~0.9.
+
+### Three execution paths
+
+0. **n <= 24: the baseline's own algorithm, bit for bit.**  At these sizes
+   both methods sit at the rounding floor.  The iterative result was
+   occasionally up to ~1.6x the baseline's residual for n <= 6 (it is always
+   smaller from n ~ 8 on).  So a one-block kernel replays the baseline's LU
+   and substitutions in the same operation order, with separately rounded
+   `__fmul_rn`/`__fsub_rn`/`__fdiv_rn`.  The baseline is built with
+   `-ffp-contract=off`.
+   - Warp i holds row i; at step s all rows i > s apply row s, with one block
+     barrier per step.
+   - The back substitution runs on one lane, keeping the baseline's summation
+     order.
+   - `check-example --self-check` reports max |gpu - cpu| = 0 for every n <= 24
+     and seed tried.
+   - It is also faster than the iterative path there (15–23 us).
+1. **25 <= n <= 5500: one persistent cooperative kernel**, launched as a one-node
+   CUDA graph, which launches ~2.5 us faster than a direct cooperative launch.
+   - One block of 1024 threads per SM.
+   - Every block keeps x in shared memory and applies the preconditioner
+     redundantly, so the only inter-block communication per iteration is the
+     residual.  It is written as tagged 64-bit words {value, epoch*64+iter} and
+     polled by readers.  There is a single grid barrier (after pass 0) per
+     solve.
+   - Residuals are double-buffered.  A block writes iteration k+1 only after
+     reading all of iteration k, so no buffer is overwritten while it can
+     still be read (every block owns at least one row; grid = min(#SM, n)).
+   - Each block caches as many of its rows of A in shared memory as fit
+     (all of them up to n ~ 2500).
+   - Odd n is handled with 4 pre-shifted copies of x in shared memory, so
+     every row reads x with aligned float4 loads.
+2. **n > 5500 (or cooperative launch unavailable): a graph of separate
+   kernels.**  It runs an extraction pass, then per iteration a dense residual
+   pass (warp per row, float4, 4-deep) and a single-block sparse kernel, chained
+   with programmatic dependent launch.  The number of iterations in the graph is
+   predicted from n.  If the device has not converged by then, the host launches
+   a 2-iteration continuation graph.
+
+## Performance (B300, host-observed pb_compute + device sync, median)
+
+About 17 us of every call is fixed launch + synchronisation cost; an empty
+cooperative kernel measures ~14–17 us in the same sequence.
+
+| n | time (us) | | n | time (us) |
+|---|---|---|---|---|
+| 1–8 | 13–16 | | 3000 | ~50 |
+| 16–24 | 19–24 | | 4096 | ~53 |
+| 25–100 | 27–29 | | 5000 | ~91 |
+| 500 | ~35 | | 5500 | ~113 |
+| 1000 | 31–36 | | 8192 | ~180 |
+| 2048 | ~35 | | 12000 | ~420 |
+| | | | 30000 | ~2100 |
+
+For n >= ~4500, A no longer fits in L2 and each pass is HBM-bound
+(~6.4 TB/s).  Three passes are the floor of this method there.  For reference,
+cuSOLVER's LU alone is in the millisecond range at n = 4096.
+
+## What else I tried (and why it was dropped)
+
+- **Plain Jacobi / Richardson (no sparse preconditioner):** ~25 passes, because
+  the heavy entries give rho ~0.4.
+- **Conditional WHILE graph nodes for device-side loop control:** ~7 us per
+  iteration of overhead.
+- **Custom grid barrier:** slower than cooperative-groups `grid.sync`.
+- **Per-iteration grid.sync in the persistent kernel:** replaced by tagged
+  residual polling (saves ~1 us per iteration).
+- **Dynamic (atomic-counter) row scheduling:** thousands of same-address
+  atomics per pass serialise at one L2 slice.  It cost 5–25 us; static
+  round-robin is better.
+- **Deeper unrolling, higher occupancy via launch bounds, and a cp.async
+  shared-memory ring for the dense pass:** all slower than the 4-deep,
+  62-register version.
+- **Prefetching a row head before `griddepcontrol.wait`:** slowed the pass
+  substantially.
+- **Splitting rows over several warps in the persistent kernel:** the runtime
+  stride and extra barriers cost more than the latency saved.
+- **Instruction footprint:** templating the persistent kernel on row
+  misalignment made it ~12.5k SASS instructions and it thrashed the
+  instruction cache.  The shifted x copies brought it to ~5k.
+- **Returning on a mapped "done" flag instead of stream sync:** saves < 1 us.
+  Not worth bending the "complete before return" rule.
+- **Tiny path with per-row "ready" flags (one warp per row, spin-waiting):**
+  the spinning warps starved the working warp (~550 cycles per step).
+  Stepping all rows together with block barriers is 2–3x faster.
+
+## With more time
+
+- Bank conflicts dominate the sparse sweeps (~3.5-way on random gathers;
+  ~25% of device time at n = 2–4k).  A conflict-aware row/lane assignment, or
+  spreading the sweeps over a thread-block cluster with DSMEM, could cut that.
+- Streaming the uncached rows with TMA bulk copies, to get more bytes in
+  flight than registers allow.  This matters for n in 3000–5500 and for the
+  first pass.
+- For odd n, use one x copy plus register funnel shifts instead of four
+  copies, freeing shared memory for more cached rows.
+- For n > 8192, parallelise the sparse step over several SMs; it is currently
+  a single-block kernel reading its structure from L2 each sweep.
