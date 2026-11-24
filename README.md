@@ -23,9 +23,9 @@ Existing evaluations of coding agents mostly report end-to-end speedups under fi
 
 [Comparison Against Hand-Built Stencil Implementations](docs/stencil.md): agent `heat-3d` solutions against AN5D, Bricks, EBISU, DRStencil, and Devito on B300 GPUs.
 
-## Evaluation Framework
+## Inspection Framework
 
-[Evaluation Framework](docs/framework.md): design principles, components, and the correctness, attainment, and cost metrics.
+[Inspection Framework](docs/framework.md): design principles, components, and the correctness, attainment, and cost metrics.
 
 ## Repository Layout
 

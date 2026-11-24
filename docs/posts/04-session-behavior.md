@@ -1,6 +1,6 @@
 # Session Behavior
 
-In this section, we show how each model's 30 sessions divide their steps and time, measured by deterministic trace preprocessing, together with the Analyzer's performance-engineering labels ([Evaluation Framework](../framework.md#analyzer-goals)).
+In this section, we show how each model's 30 sessions divide their steps and time, measured by deterministic trace preprocessing, together with the Analyzer's performance-engineering labels ([Inspection Framework](../framework.md#analyzer-goals)).
 
 <figure class="njs-fig njs-wide" markdown="span">
   ![Behavioral breakdown across 28 models: step activities, LLM vs tool time, parameter search, and Analyzer performance-engineering labels](../assets/behavior.svg)
@@ -33,7 +33,7 @@ Besides bugs in its code, which [Analysis 6](06-silent-gpu-bugs.md#how-agents-ha
 
 ## Session Matrices
 
-Every cell is one session: rows are the 30 kernels and columns the 28 models. The matrices below group the views into correctness, performance, and trace statistics; choose a view to colour the cells, and hover a cell for all labels of that session. The correctness and performance views are Level-2 Analyzer labels, defined on the [Evaluation Framework](../framework.md#analyzer-goals) page; the trace statistics come from deterministic preprocessing without an LLM. The per-session values are in `data/l2.csv`.
+Every cell is one session: rows are the 30 kernels and columns the 28 models. The matrices below group the views into correctness, performance, and trace statistics; choose a view to colour the cells, and hover a cell for all labels of that session. The correctness and performance views are Level-2 Analyzer labels, defined on the [Inspection Framework](../framework.md#analyzer-goals) page; the trace statistics come from deterministic preprocessing without an LLM. The per-session values are in `data/l2.csv`.
 
 ### Correctness
 

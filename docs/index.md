@@ -87,6 +87,6 @@ These are the ten observations of our paper. Each links to the page that gives i
 | **8** | [Analyzer Cross-Check: Claude against Codex](posts/08-analyzer-reliability.md) | Claude against Codex agreement on 180 traces over 17 rubric fields. |
 
 
-Per-session tokens, active time, and list-price cost are on the [Cost](cost.md) page, agent `heat-3d` solutions against hand-built stencil libraries on the [Stencil Comparison](stencil.md) page, the framework and metrics behind every number on the [Evaluation Framework](framework.md) page, and the code of the fastest solutions on the [Solution Code](code/index.md) page.
+Per-session tokens, active time, and list-price cost are on the [Cost](cost.md) page, agent `heat-3d` solutions against hand-built stencil libraries on the [Stencil Comparison](stencil.md) page, the framework and metrics behind every number on the [Inspection Framework](framework.md) page, and the code of the fastest solutions on the [Solution Code](code/index.md) page.
 
 </div>

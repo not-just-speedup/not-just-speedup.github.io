@@ -81,7 +81,7 @@ nav:
       - "7. Bugs Beyond the Verifier": posts/07-bugs-beyond-the-verifier.md
       - "8. Analyzer Cross-Check: Claude against Codex": posts/08-analyzer-reliability.md
   - Stencil Comparison: stencil.md
-  - Evaluation Framework: framework.md
+  - Inspection Framework: framework.md
   - Roofline Model: roofline.md
   - Data:
           - code/index.md

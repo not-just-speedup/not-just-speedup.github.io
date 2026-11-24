@@ -83,6 +83,8 @@ def build_rows() -> list[dict]:
         cw = int(t.get("cache_write_5m_tokens") or 0) + int(t.get("cache_write_1h_tokens") or 0)
         out = int(t.get("output_billed") or 0)
         usd = None if t.get("usd") in ("", None) else float(t["usd"]) + REPRICE_CACHE_READ.get(ag, 0.0) * cr / 1e6
+        sol = os.path.join(ARTIFACT, r["trial"], "frozen", "solution.cu")
+        lines = sum(1 for _ in open(sol, errors="ignore")) if os.path.exists(sol) else ""
         b = beh[(ag, r["kernel"])]
         disp, fw, wc = MODEL_DISPLAY[ag]
         f4 = lambda v: "" if v is None else f"{v:.4f}"
@@ -95,6 +97,7 @@ def build_rows() -> list[dict]:
             "input_tokens_total": inp + cr + cw, "usd": f4(usd),
             "active_min": f"{float(b['active_s']) / 60:.2f}", "llm_min": f"{float(b['llm_s']) / 60:.2f}",
             "tool_min": f"{float(b['tool_s']) / 60:.2f}",
+            "solution_lines": lines,
         })
     with open(os.path.join(DATA_DIR, "cost.csv"), "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
@@ -130,7 +133,7 @@ GREY_NA = "EEEEEE"
 
 
 def heatmap(rows: list[dict], key: str, lo: float, hi: float, unit: str, out: str, ticks: list[float],
-            ramp: list[str], scale: float = 1.0, unpriced_legend: bool = False) -> None:
+            ramp: list[str], scale: float = 1.0, unpriced_legend: bool = False, na_label: str = "No list price") -> None:
     """Kernels x models; cell value = row[key] * scale. A black corner marks a failed or incorrect session,
     a dashed frame a session with a bug marked (reproduced outside the task's setting, kept and scored), as in the
     paper's attainment figure. Footer rows: geometric and arithmetic mean over the model's 30 sessions."""
@@ -229,7 +232,7 @@ def heatmap(rows: list[dict], key: str, lo: float, hi: float, unit: str, out: st
     lx += 62
     if unpriced_legend:
         P.append(rf"\fill[fill={PAL.tikz_rgb(GREY_NA)}] ({lx:.2f},{ly:.2f}) rectangle ({lx + lw:.2f},{ly + lh:.2f});")
-        P.append(rf"\node[anchor=west, inner sep=2pt] at ({lx + lw:.2f},{ly + lh / 2:.2f}) {{No list price}};")
+        P.append(rf"\node[anchor=west, inner sep=2pt] at ({lx + lw:.2f},{ly + lh / 2:.2f}) {{{na_label}}};")
     render_tikz_svg(P, os.path.join(ASSET_DIR, out))
 
 
@@ -243,6 +246,8 @@ def main() -> None:
     heatmap(rows, "active_min", 1.0, 1000.0, "Active minutes", "time_heatmap.svg", [1, 10, 100, 1000], PAL.TIME_RAMP)
     heatmap(rows, "usd", 0.01, 100.0, "USD per session", "cost_heatmap.svg", [0.01, 0.1, 1, 10, 100],
             PAL.EXPENSE_RAMP, unpriced_legend=True)
+    heatmap(rows, "solution_lines", 50.0, 5000.0, "Lines of solution.cu", "code_lines_heatmap.svg", [100, 1000],
+            PAL.CODE_RAMP, unpriced_legend=True, na_label="No solution submitted")
     tot = sum(float(r["usd"]) for r in rows if r["usd"])
     print(f"{len(rows)} sessions, {tot:.0f} USD, {sum(float(r['active_min']) for r in rows) / 60:.0f} h")
 

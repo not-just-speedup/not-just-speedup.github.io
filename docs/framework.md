@@ -1,4 +1,4 @@
-# Evaluation Framework
+# Inspection Framework
 
 Our framework benchmarks coding agents as black boxes: each agent works in an isolated sandbox against hidden ground truth, and we judge the result and the trace with separate components. This page summarizes the framework and the metrics behind every number on this site.
 

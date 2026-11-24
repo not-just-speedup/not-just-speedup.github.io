@@ -47,6 +47,8 @@ EXPENSE_RAMP = ["FFF5F0", "FDD5C5", "F9A487", "EE6548", "C9302A", "8C1515"]
 # Token ramps (Cost page): input blue-violet, output plum; neighbouring hues, light -> dark
 INPUT_TOKEN_RAMP = ["F5F4FB", "DCDAF0", "B6B1E0", "8A80C9", "6250AD", "3D2C80"]
 OUTPUT_TOKEN_RAMP = ["FBF3F8", "F2D1E6", "E3A3CC", "CC6FAD", "A8418A", "74205F"]
+# Code-length ramp (Cost page): teal, light -> dark
+CODE_RAMP = ["F0F9F9", "CDEBEB", "96D2D2", "56B0B0", "2A8585", "145A5A"]
 # Time ramp (Cost page): blue, light -> dark
 TIME_RAMP = ["F2F7FC", "CFE2F3", "9EC4E6", "629DD1", "2F6FB3", "174478"]
 

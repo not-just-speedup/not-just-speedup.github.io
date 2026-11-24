@@ -27,7 +27,7 @@ Antigravity); the owner decides what is published.
 - `data/attainment.csv`, `data/behavior.csv`, the bug tables and the bug figures come from
   `scripts/build_bug_analysis.py`; `data/cost.csv` and the cost figures from `scripts/build_cost.py`. Both read the
   paper repository and the trial records beside this checkout. Run `build_bug_analysis.py` first.
-- Colors: mint and blue follow the paper; on the Cost page, red is list-price cost, blue-violet input tokens, plum output tokens, blue time (`palette.py`).
+- Colors: mint and blue follow the paper; on the Cost page, red is list-price cost, blue-violet input tokens, plum output tokens, blue time, teal code length (`palette.py`).
 - `docs/assets/attainment.svg`, `behavior.svg`, `heat3d-sota.svg` and `overview.svg` are the paper's figures,
   converted with `pdftocairo -svg`.
 - `docs/code/files/<case>/` holds published solutions exactly as frozen (`solution.cu`, `NOTES.txt` = the agent's NOTES.md)

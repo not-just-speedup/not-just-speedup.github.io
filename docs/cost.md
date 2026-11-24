@@ -1,6 +1,6 @@
 # Cost, Tokens, and Time per Session
 
-The paper's Table 1 reports each model's mean tokens, active time, and cost over its 30 sessions. On this page, we show them for every session. Across all 840 sessions, the models read 16.8 billion input tokens and wrote 180 million output tokens over 909 active hours, which cost 7,124 USD at list price.
+The paper's Table 1 reports each model's mean tokens, active time, and cost over its 30 sessions. On this page, we show them for every session, together with the length of the code each session produced. Across all 840 sessions, the models read 16.8 billion input tokens and wrote 180 million output tokens over 909 active hours, which cost 7,124 USD at list price.
 
 ## How We Measure
 
@@ -9,7 +9,7 @@ The paper's Table 1 reports each model's mean tokens, active time, and cost over
 - **Cost:** we price every token at the vendor's list price as of November 2026. This is not a bill: the closed models ran on subscriptions and the open-weight models on RiVault. Seed-OSS-36B, Nemotron 3 Ultra, and Nemotron 3.5 Super have no published price and are left unpriced.
 - **All sessions count:** a session that fails still spent its tokens and time.
 
-The [Evaluation Framework](framework.md#cost) page defines these metrics. In every heatmap below, a black corner marks a session that failed or returned incorrect results (at Level 1 or in Bug Verification), and a dashed frame marks a passed session with a bug marked, as in the paper's Figure 2: 25 solutions with a reproduced bug outside our evaluation setting, kept and scored, and five Gemini sessions that hung on their own test program and were continued. The two footer rows give each model's geometric and arithmetic mean over its 30 sessions; the arithmetic mean equals Table 1 of the paper.
+The [Inspection Framework](framework.md#cost) page defines these metrics. In every heatmap below, a black corner marks a session that failed or returned incorrect results (at Level 1 or in Bug Verification), and a dashed frame marks a passed session with a bug marked, as in the paper's Figure 2: 25 solutions with a reproduced bug outside our evaluation setting, kept and scored, and five Gemini sessions that hung on their own test program and were continued. The two footer rows give each model's geometric and arithmetic mean over its 30 sessions; the arithmetic mean equals Table 1 of the paper.
 
 ## Tokens
 
@@ -44,5 +44,14 @@ The [Evaluation Framework](framework.md#cost) page defines these metrics. In eve
 **Results:** Model choice, not the kernel, sets the cost. The four large Claude models account for 75% of the total, and none of their 120 sessions costs less than 9 USD. Within one of these models, the most expensive kernel costs 3× (Fable 5.2, Sonnet 5.5) to 10× (Fable 5.1) as much as the cheapest, while across models the same kernel spans more than three orders of magnitude. Time and cost do not rank models the same way: Sonnet 5.5 runs longest yet costs less per session than Fable 5.2 and Opus 5.5, and GLM-5.3-Flash averages 176 minutes but 2.2 USD. Failed sessions cost 389 USD in total, 5.5% of the priced cost.
 
 The decoding speed $D$ in Table 1 of the paper, and how we estimate it from the traces, are on the [Session Behavior](posts/04-session-behavior.md#decoding-speed) page.
+
+## Code Length
+
+<figure class="njs-fig njs-wide" markdown="span">
+  ![Lines of the frozen solution.cu of each of the 840 sessions, per model and kernel](assets/code_lines_heatmap.svg)
+  <figcaption><strong>Figure 5.</strong> Lines of the frozen <code>solution.cu</code> per session (log color scale), by kernel and model. Grey cells are the seven sessions that submitted no solution.</figcaption>
+</figure>
+
+**Results:** Stronger models write much longer code. Gemini 4 Neon writes 1,878 lines per solution on average, up to 3,171 lines on `adi`, and the four large Claude models write 890 to 1,210, while Nemotron 3 Ultra, Nemotron 3.5 Super, Qwen3.6-35B-A3B, and Haiku 4.5 write fewer than 160. Across the 28 models, the mean solution length ranks the models almost as their attainment geomean does (Spearman correlation 0.87). Longer solutions hold more specialized paths, such as size-dependent kernels, fallbacks, and the precomputed transforms of algorithm changes, which is also why understanding them takes more effort ([Solution Code](code/index.md)).
 
 All per-session values behind these figures are in `data/cost.csv`.

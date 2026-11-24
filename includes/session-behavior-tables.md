@@ -87,7 +87,7 @@ Measured by deterministic trace preprocessing, without an LLM. Each value is a p
 
 ## Analyzer Labels by Goal
 
-Counts of sessions (of 30 per model) with each label, from the Level-2 Analyzer's reports; the goals are defined on the [Evaluation Framework](../framework.md#analyzer-goals) page. A dot means zero.
+Counts of sessions (of 30 per model) with each label, from the Level-2 Analyzer's reports; the goals are defined on the [Inspection Framework](../framework.md#analyzer-goals) page. A dot means zero.
 
 
 ### G2: Correctness Judgement

@@ -41,6 +41,7 @@ Per-session tokens, list-price cost, and time for all 840 sessions, the values b
 | `output_tokens`, `reasoning_tokens` | Billed output (reasoning included) and the reasoning part of it |
 | `usd` | List-price cost (empty for unpriced models) |
 | `active_min`, `llm_min`, `tool_min` | Active time $T_{e2e}$, time waiting on the model, and time in tools (minutes) |
+| `solution_lines` | Lines of the frozen `solution.cu` (empty when no solution was submitted) |
 
 ## Behavior and Ablation Tables
 
