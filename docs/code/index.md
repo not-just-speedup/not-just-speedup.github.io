@@ -12,6 +12,14 @@ For every kernel where a solution changes the algorithm, we publish the fastest 
 | `durbin` | [Fable 5.2](durbin-fable-5-2.md) | 81% | Fastest algorithm change | 2,192 |
 | `heat-3d` | [Fable 5.2](heat-3d-fable-5-2.md) | 107% | Fastest time-stepping solution | 702 |
 
+## No-GPU Incident: A CUDA Kernel Tested on a CPU Simulator
+
+During the [no-GPU incident](../posts/05-profilers-and-no-gpu.md#no-gpu-incident), Fable 5.1 tested its kernel source in a SIMT simulator it wrote itself, one CPU thread per CUDA thread. We publish the solution together with the simulator.
+
+| Kernel | Solution | Roofline attainment: no GPU → working GPU | Shown as | Lines of `solution.cu` |
+| :--- | :--- | :---: | :--- | ---: |
+| `deriche` | [Fable 5.1](deriche-fable-5-1-no-gpu.md) | 26.1% → 24.5% | CUDA kernel simulated on the CPU | 748 |
+
 ## Earlier Round: Solutions Judged Reward Hacking by Hand
 
 In an earlier round, before the Analyzer's legitimacy goals existed, we labelled solutions on two kernels reward hacking by manual review, and then corrected the inputs. We keep a copy of the fastest such solution per kernel. They carry no Level-2 analysis.

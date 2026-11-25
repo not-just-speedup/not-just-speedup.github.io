@@ -1,0 +1,175 @@
+# NOTES — case-23 (PolyBench `deriche`, 2-D recursive Gaussian filter)
+
+## What the computation is
+
+`compute.inc` is the Deriche edge detector: a 2nd-order IIR filter applied along
+every row in both directions (causal + anti-causal, summed into `buf1`), then along
+every column in both directions (summed into `buf1`).  `buf2`/`buf3` are scratch.
+With s0 in [0.125, 2) the recurrence `y[j] = a*x + b1*y[j-1] + b2*y[j-2]` has complex
+poles of modulus `exp(-s0)`, so its impulse response decays like `exp(-s0*d)`.
+
+## Approach
+
+Two kernels, the intermediate H (row-filtered image) materialised once in device
+scratch; HBM traffic is 4 array passes (read x, write H, read H, write out), the
+minimum for a two-stage separable filter whose stages are summed (the two directions
+of a stage cannot be fused into one streaming sweep, and fusing the stages would need
+the entire H of a column stripe).
+
+Both kernels use the same decomposition of a line into pieces of 32 elements:
+
+1. each lane/thread filters its piece from a zero state (local pass);
+2. the exact state entering every piece is obtained from the pieces' end states with
+   an affine scan: the state recurrence `s' = M s + p` is linear, so `M^32, M^64, ...`
+   are precomputed (in double, from the float-rounded coefficients) and a 5-step
+   Kogge-Stone shuffle scan (row kernel) or a 16-step sequential scan by one warp
+   (column kernel) gives every piece its exact entering state;
+3. the piece result is fixed: the column kernel re-runs the recurrence from the exact
+   state (same formula as the baseline); the row kernel adds the homogeneous response
+   `h1[d]*S0 + h2[d]*S1` of the entering state (tables `h1,h2` = first row of `M^(d+1)`).
+
+The state entering a *chunk* (1024 elements of a row, 512 rows of a column stripe)
+comes from a window of W*32 neighbouring elements filtered from a zero state, where
+`32*W >= 20/s0` (W = 1..5).  The neglected part is `~exp(-20) ≈ 2e-9` relative,
+about 1e-2 ulp of FP32, i.e. 50-2000x below the CPU baseline's own deviation from
+the double reference.  Window data is a neighbour chunk's data, so it is an L2 hit,
+not extra HBM traffic.  Pieces/windows beyond the array are zero-filled, which
+reproduces the baseline's zero initial conditions exactly.
+
+* **row_kernel**: one warp per (row, 1024-element chunk); 8 warps per block.  The
+  tile (chunk + both windows) is loaded coalesced (32 consecutive floats per
+  instruction) into a padded shared-memory tile (stride 33, conflict-free), lane t
+  then owns 32 consecutive elements.  Windows are processed by all 32 lanes as
+  W-element sub-pieces (scan matrices `M^(W*2^i)`).  The anti-causal local result is
+  kept in registers, the causal local result is accumulated onto it, both boundary
+  corrections are added at the end (small terms summed first), the tile is overwritten
+  with the result and stored coalesced.  Shared-memory (LSU) traffic per element is
+  ~6 accesses; the kernel is close to HBM-bound by my instruction-count model.
+  80 registers, 3 blocks/SM, ~44 KB dynamic shared memory per block.
+* **col_kernel**: one 512-thread block per (32-column stripe, 512-row chunk).  Thread
+  (warp p, lane t) owns rows [32p, 32p+32) of column t: loads are naturally coalesced
+  (128 B per warp per row), the 32 inputs stay in registers for all four passes, the
+  anti-causal result goes to shared memory (64 KB), the causal recompute adds it and
+  stores.  Warp-uniform fast path for pieces fully inside the array.  64 registers,
+  no spills, 2 blocks/SM.
+
+Phase rules: `pb_setup` allocates the three device arrays, sets the >48 KB dynamic
+shared memory attribute and runs the self-test described below, which also warms every
+kernel instantiation (no input values involved); `pb_upload` copies `buf0` (the only initialised region) with a
+plain `cudaMemcpy`; `pb_compute` computes the coefficients from s0 on the host
+(a few dozen scalar flops, double precision, rounded to float), launches the two
+kernels and synchronises; `pb_download` copies `buf1`; `pb_teardown` frees.  Every
+CUDA call is checked and its error code propagated.
+
+Safety net (because the kernels could not be executed in this session, see below):
+`pb_setup` also runs a built-in self-test on synthetic data (a 600x1100 pseudo-random
+image, five s0 values covering every window variant W = 1..5): the fast kernels and a
+pair of simple fallback kernels (one thread per line, the baseline's loops verbatim)
+are each compared with a host port of `compute.inc`; the fast path is used unless it
+disagrees by more than 1e-4 relative while the fallback agrees.  The self-test uses no
+problem input and caches no result; it only selects a kernel configuration.  The host
+port is verified bit-identical to the harness baseline, and the fallback kernels'
+arithmetic (emulated) shows zero factor-1 violations as well.
+
+## Numerical accuracy (verified)
+
+All arithmetic is FP32 with explicit `fmaf`, so it is fully specified.  Every
+recurrence step accumulates the small feedback terms first and the large input terms
+last (one full-magnitude rounding instead of up to four), which makes each step more
+accurate than the baseline's seven separately rounded operations.
+
+I wrote a host emulation of the exact lane-by-lane arithmetic of both kernels
+(`scratch/test.cu`, sharing the step functions with the kernels) and compared it
+against the FP32 CPU baseline and the same computation in double, for 15 shapes
+(1x1, 1x5000, 5000x1, 37x1030, 1031x37, 3x2500, 513x33, 31x1023, 1000x1000,
+2049x1025, 1025x2047, 600x4096, 4096x600, ...) x 8 values of s0 in [0.125, 1.99]:
+
+* the public example reproduces to 4.7e-10 (max |expected| 3.2e-3);
+* zero elements violate `|gpu-ref| <= 1*(eps*|ref| + max|cpu-ref|)` (factor 1, atol 0)
+  in all 120 cases (~20 M elements);
+* the max deviation from the double reference is 0.2-0.5x the baseline's for
+  s0 <= 0.5 and 0.6-1.0x for s0 around 1 (where the baseline is unusually accurate
+  because a2 ~ 0).
+
+## Important caveat: hardware state during this session
+
+The B300 in this sandbox was in a faulted state for the whole session
+(`nvidia-smi -q` reports "GPU Recovery Action: Reset"; every context creation fails
+with "CUDA-capable device(s) is/are busy or unavailable"; `check-example` fails at
+the driver's own `cudaFree(NULL)` with status 70 before touching the candidate; a
+reset needs privileges the sandbox lacks).  I polled for recovery in the background
+throughout.  Consequently:
+
+* the candidate compiles and links with the runner's exact command (verified via
+  `check-example`, which only fails at CUDA initialisation), with zero spills in the
+  column kernel and 3-4 spilled values in the row kernel;
+* the algorithm and all its arithmetic are validated through the emulation above;
+* the kernels themselves have not executed on a GPU in this session, but the actual
+  kernel source was executed in a SIMT host simulator (`scratch/sim_shim.h`,
+  `scratch/sim_test.cpp`): g++ compiles `solution.cu` with `threadIdx`/`blockIdx`,
+  dynamic shared memory, `__shfl_{up,down}_sync`, `__shfl_sync`, `__syncwarp` and
+  `__syncthreads` shimmed onto one std::thread per CUDA thread with real barriers and
+  per-warp exchange buffers (out-of-range shuffle sources return the caller's value, as
+  on hardware).  Shared memory is NaN-filled (uninitialised on hardware) and every
+  array has NaN guard zones, so any stray read shows up as a NaN mismatch and any
+  stray write corrupts a guard.  For 14 shapes (1x1, 5x6, 1x5000, 5000x1, 2x1025,
+  1025x2, 3x2500, 37x1030, 1031x37, 513x33, 64x2048, 70x2100, 600x1100, 1100x600)
+  covering every window variant, partial chunks/stripes in both dimensions and idle
+  lanes/warps, the simulated fast kernels, the simulated fallback kernels and the
+  emulation agree bit-for-bit, with all guards intact.  What remains unexercised is
+  hardware-specific behaviour only (launch configuration limits, the >48 KB dynamic
+  shared memory opt-in, real scheduling) — and the setup self-test guards those too.
+  `scratch/test.cu` additionally runs the real five-phase API and reports bitwise
+  mismatches versus the emulation when a GPU is available.
+
+## Expected performance
+
+SASS instruction mix (cuobjdump, W=5): row kernel per warp-item of 1024 elements:
+42 LDG (fast path), 74 STS, 79 LDS (ptxas reuses the 32 inputs loaded for the
+anti-causal pass in the causal pass), 32 STG, 48 SHFL, ~500 FFMA/FMUL — about 230
+L1 wavefronts (~29 KB equivalent) per 8 KB of HBM traffic, i.e. ~70% of the HBM time
+budget at 128 B/cycle/SM, so the kernel should be HBM-bound.  Column kernel per
+thread-piece: 35 LDG, 32 STG, ~70 LDS/STS, ~740 FFMA incl. windows; instruction
+issue is roughly balanced with its HBM time.
+
+Model (B300: 148 SMs, 126 MB L2, ~7.7 TB/s HBM): 4 array passes of HBM traffic;
+for n0 x n1 = 4096 x 2160 that is ~140 MB (the whole working set is L2-resident,
+so likely faster than HBM speed), expected ~40-80 us total for both kernels; for a
+16 GiB buffer (the domain maximum) ~10-12 ms.  The row kernel has ~1.3x more L1/LSU
+work per byte than an ideal streaming kernel because of the shared-memory transpose,
+so it may reach ~75-90% of HBM bandwidth; the column kernel should be HBM-bound.
+Both kernels are latency-tolerant: 24-32 resident warps per SM, 35-42 independent
+loads in flight per thread/warp.
+
+## What else I considered / tried
+
+* Thread-per-row (uncoalesced) and thread-per-column with whole columns per thread:
+  far too little parallelism (n0 or n1 threads) and/or uncoalesced access.
+* Exact carries without windows (a carry kernel + fix-up kernel, Nehab et al. style):
+  one extra HBM read of the input per stage (6 passes instead of 4); the windowed
+  approach gets the same result at ~1e-2 ulp with only L2 traffic.
+* Fusing the row and column stages to avoid materialising H: the column stage needs
+  all rows of a column stripe filtered horizontally; with the sum-of-two-directions
+  structure this requires either storing one direction (same traffic as H) or 3-9x
+  redundant row filtering for narrow stripes.  Not worth it.
+* Recompute vs. correction in the row kernel: recompute (re-running the recurrence
+  from the exact state) costs 32 extra shared-memory reads per lane and more
+  registers; the correction tables cost 4 FMAs per element and, after moving the
+  corrections to the end and summing the small terms first, are as accurate.
+* Launch bounds: forcing 64 registers in the row kernel produced ~150 B of spills
+  (extra LSU traffic in the already LSU-heavy kernel); 80 registers / 3 blocks per SM
+  removes them.  For the column kernel a running-pointer fast path removed all spills
+  at 64 registers.
+* FP64 for the main passes: the B300's FP64 rate is far too low (and unnecessary: the
+  FP32 result is already more accurate than the baseline).
+
+## With more time (and a working GPU)
+
+1. Run `check-example`, the self-check and `scratch/test.cu` on hardware; confirm
+   bitwise equality with the emulation; measure both kernels versus the HBM roofline.
+2. Tune: ROW_WARPS (8), column chunk (512 rows) and threads per block, window length
+   rule, `__launch_bounds__`, float4 tile loads when `n1 % 4 == 0`.
+3. Degenerate shapes (n0 <= 64 or n1 <= 64): add kernel variants with fewer idle
+   threads (e.g. 16-element pieces, narrower column blocks).
+4. For mid-size problems that fit in L2, consider a cooperative single launch to
+   remove the inter-kernel gap.

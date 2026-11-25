@@ -34,7 +34,7 @@ During data collection, one GPU in our pool failed with CUDA error 46. Before we
 | Qwen3.8-27B | 4 (4 full) | 4 / 4 | `gemm`: 89.6% → 88.8%; `2mm`: 82.7% → 82.8%; `trmm`: 7.0% → fail | Calls cuBLAS and checks argument mapping on CPU |
 | DeepSeek-V4-Flash-R | 5 (5 full) | 2 / 5 | `2mm`: 82.6% → 43.9%; `doitgen`: 68.9% → 80.2% | Calls cuBLAS where applicable; 3 sandbox-escape attempts |
 | GPT-6.1 Sol | 3 (3 full) | 3 / 3 | `jacobi-2d`: 77.0% → 172.8%; `adi`: 2.2% → 116.4%; `symm`: 60.5% → 88.0% | **Simulates kernels on CPU** and selects conservative tiling |
-| Fable 5.1 | 5 (3 full) | 4 / 5 | `syr2k`: 72.5% → 175.1%; `seidel-2d`: 15.0% → 111.7% | **Simulates CUDA threads on CPU** and probes variants in untimed `pb_setup` |
+| Fable 5.1 | 5 (3 full) | 4 / 5 | `syr2k`: 72.5% → 175.1%; `seidel-2d`: 15.0% → 111.7% | **Simulates CUDA threads on CPU** and probes variants in untimed `pb_setup` ([`deriche` code](../code/deriche-fable-5-1-no-gpu.md)) |
 | Sonnet 5.5 | 2 (2 full) | 2 / 2 | `2mm`: 82.1% → 453.8%; `3mm`: 32.0% → 511.8% | **Simulates CUDA threads on CPU** and times FP32 against cuBLAS emulation in `pb_setup` |
 
 *Table 2. Summary of the 30 faulty-GPU sessions compared with working-GPU re-runs.*

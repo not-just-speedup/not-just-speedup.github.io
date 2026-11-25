@@ -14,7 +14,7 @@ In this site, we publish extended analyses, bug verifications, methodology audit
 
 - How do agents exceed a reference roofline bound, and why do some narrow-precision or temporal-blocking solutions still fall short?
 - When do agents change the algorithm legitimately, and when do they reward-hack the test inputs?
-- Which models are strongest at hardware optimization, and which at changing the algorithm?
+- Which models are strongest at kernel optimization for hardware features, and which at changing the algorithm?
 - How do agents spend their sessions, and do they stop for good reasons?
 - How do agents behave with profiler access or without a working GPU?
 - What bugs remain in solutions that already pass deterministic verification, and which models produce them?
@@ -65,9 +65,9 @@ These are the ten observations of our paper. Each links to the page that gives i
 3. **More models try temporal blocking than reduced precision or reduced range.** 19 of 28 models apply temporal blocking in at least one passed solution, against ten that exceed a compute bound with narrower formats; 18 temporal-blocking solutions still stay below the bound. [Analysis 1 →](posts/01-breaking-the-roofline.md#breaking-the-memory-bound-temporal-blocking)
 4. **Stencil optimization is no longer a challenge for frontier models.** On every one of the six iterative stencils, at least three models exceed the bound, including the 3-D `heat-3d`. [Analysis 1 →](posts/01-breaking-the-roofline.md#breaking-the-memory-bound-temporal-blocking)
 5. **The flagship models change the algorithm most, and algorithm-level optimization may be less hard than expected.** Gemini 4 Neon and GPT-6.2 Astra change the algorithm on five kernels each and Fable 5.2 on three; no open-weight model does. Each change rests on mathematics such as diagonalization or Toeplitz structure. [Analysis 2 →](posts/02-algorithms-vs-hacking.md)
-6. **Gemini 4 Neon may be stronger at algorithm optimization, while Opus 5.5 may be stronger at kernel optimization.** Neon leads on all 30 kernels at 198% of the bound; on the 24 kernels without algorithm changes, Opus 5.5 leads at 161%, ahead of Sonnet 5.5 and Neon. [Analysis 3 →](posts/03-ranking-and-wrap-up.md)
+6. **Gemini 4 Neon may be stronger at algorithm optimization, while Opus 5.5 may be stronger at kernel optimization for hardware features.** Neon leads on all 30 kernels at 198% of the bound; on the 24 kernels without algorithm changes, Opus 5.5 leads at 161%, ahead of Sonnet 5.5 and Neon, mostly through hand-written 5th-generation tensor-core kernels it compiles at run time with NVRTC. [Analysis 3 →](posts/03-ranking-and-wrap-up.md)
 7. **The AI performance model aligns with our understanding for most kernels.** Of the 24 kernels without time steps, the review keeps the AI model on 21 and changes the other three by at most 5.5%. On the six time-step kernels, where the AI model counted stencil traffic only once per run, the bound changes by a factor of 1.7 to 26. [Roofline Model →](roofline.md#what-the-review-changed)
-8. **High attainment, quantitative reasoning, and a hypothesis loop appear together.** Long sessions are not required: Gemini 4 Neon reaches the highest geomean in 38 active hours, against 64 to 172 hours for the large Claude models. [Analysis 4 →](posts/04-session-behavior.md)
+8. **Stronger model, quantitative reasoning and a hypothesis loop appear together.** Long sessions are not required: Gemini 4 Neon reaches the highest geomean in 38 active hours, against 64 to 172 hours for the large Claude models. [Analysis 4 →](posts/04-session-behavior.md)
 9. **The agents we test gain little from today's profilers and can work without a GPU, though they need one for performance.** With a profiler, kernels become faster about as often as slower; without a GPU, 23 of 27 sessions still pass, but none exceeds the bound. [Analysis 5 →](posts/05-profilers-and-no-gpu.md)
 10. **In performance optimization, access to a flagship model is a competitive advantage.** On `heat-3d`, Fable 5.2 is 2.5× as fast as the hand-tuned EBISU and 1.9× to 7.1× as fast as AN5D, Bricks, DRStencil, and Devito, while every other company's fastest time-stepping solution is at most on par with AN5D. [Stencil Comparison →](stencil.md)
 
@@ -79,7 +79,7 @@ These are the ten observations of our paper. Each links to the page that gives i
 | :--- | :--- | :--- |
 | **1** | [Breaking the Roofline Bound](posts/01-breaking-the-roofline.md) | Per-model precision and temporal-blocking tables, 32 below-bound narrower-format solutions, and the attainment overview. |
 | **2** | [Algorithm Changes and Reward Hacking](posts/02-algorithms-vs-hacking.md) | 19 verified algorithm changes, the ADI spectral derivation, 13 false positives, and reward hacking. |
-| **3** | [Ranking and Wrap-Up](posts/03-ranking-and-wrap-up.md) | Model rankings for hardware optimization alone and with algorithm changes. |
+| **3** | [Ranking and Wrap-Up](posts/03-ranking-and-wrap-up.md) | Model rankings for kernel optimization for hardware features alone, and with algorithm changes. |
 | **4** | [Session Behavior](posts/04-session-behavior.md) | Step activities, time split, parameter search, and Analyzer labels per model; 6 of 840 justified stops. |
 | **5** | [Profiler and No-GPU Ablations](posts/05-profilers-and-no-gpu.md) | 185 paired Nsight sessions ($\rho = -0.06$) and 30 sessions from a faulty-GPU incident. |
 | **6** | [Bug Analysis](posts/06-silent-gpu-bugs.md) | All 102 failures by where they were caught, and how agents handle bugs during a session. |

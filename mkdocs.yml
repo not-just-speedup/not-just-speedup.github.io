@@ -92,5 +92,6 @@ nav:
           - "nussinov: GPT-6.2 Astra": code/nussinov-gpt-6-2-astra.md
           - "durbin: Fable 5.2": code/durbin-fable-5-2.md
           - "heat-3d: Fable 5.2 (time stepping)": code/heat-3d-fable-5-2.md
+          - "deriche: Fable 5.1 (no GPU, CPU simulation)": code/deriche-fable-5-1-no-gpu.md
           - "floyd-warshall: Sonnet 5.5 (earlier round, hacking)": code/floyd-warshall-sonnet-5-5-round-011.md
           - "ludcmp: Opus 5.5 (earlier round, hacking)": code/ludcmp-opus-5-5-round-011.md

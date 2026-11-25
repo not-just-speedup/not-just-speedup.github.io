@@ -1,10 +1,10 @@
 # Ranking and Wrap-Up
 
-[Analysis 1](01-breaking-the-roofline.md) and [Analysis 2](02-algorithms-vs-hacking.md) show two routes past the roofline bound: hardware optimization of the reference algorithm, through lower-precision tensor cores, 16-bit DPX, and temporal blocking, and changes to the algorithm itself. In this section, we rank the models on each route.
+[Analysis 1](01-breaking-the-roofline.md) and [Analysis 2](02-algorithms-vs-hacking.md) show two routes past the roofline bound: kernel optimization for hardware features, which keeps the reference algorithm, through lower-precision tensor cores, 16-bit DPX, and temporal blocking, and changes to the algorithm itself. In this section, we rank the models on each route.
 
-We rank the 28 models twice. The first ranking measures hardware optimization alone: it uses only the 24 kernels on which no agent changes the algorithm, so every solution there runs the reference algorithm and its attainment reflects how well it uses the GPU. The second ranking uses all 30 kernels and therefore also credits algorithm changes. Geomean is over passed solutions and mean is over all kernels with failures counted as zero, as in the paper; both are footer rows of the attainment figure in [Analysis 1](01-breaking-the-roofline.md).
+We rank the 28 models twice. The first ranking measures kernel optimization for hardware features alone: it uses only the 24 kernels on which no agent changes the algorithm, so every solution there runs the reference algorithm and its attainment reflects how well it uses the GPU. The second ranking uses all 30 kernels and therefore also credits algorithm changes. Geomean is over passed solutions and mean is over all kernels with failures counted as zero, as in the paper; both are footer rows of the attainment figure in [Analysis 1](01-breaking-the-roofline.md).
 
-## Ranking 1: Hardware Optimization (24 Kernels Without Algorithm Changes)
+## Ranking 1: Kernel Optimization for Hardware Features (24 Kernels Without Algorithm Changes)
 
 <div class="njs-table" markdown="1">
 
@@ -47,7 +47,7 @@ We rank the 28 models twice. The first ranking measures hardware optimization al
 
 <div class="njs-table" markdown="1">
 
-| Rank | Model | Geomean | Mean | Algorithm changes | Hardware rank | Change |
+| Rank | Model | Geomean | Mean | Algorithm changes | Rank in Ranking 1 | Change |
 | ---: | :--- | ---: | ---: | :---: | :---: | :---: |
 | 1 | Gemini 4 Neon | 198% | 974% | 5 | 3 | ↑2 |
 | 2 | Opus 5.5 | 156% | 284% | 1 | 1 | ↓1 |
@@ -80,8 +80,8 @@ We rank the 28 models twice. The first ranking measures hardware optimization al
 
 </div>
 
-*Table 2. Roofline attainment on all 30 kernels, ranked by geomean. Algorithm changes count the model's passed solutions that change the algorithm ([Analysis 2](02-algorithms-vs-hacking.md)); Change is the move from the hardware ranking.*
+*Table 2. Roofline attainment on all 30 kernels, ranked by geomean. Algorithm changes count the model's passed solutions that change the algorithm ([Analysis 2](02-algorithms-vs-hacking.md)); Change is the move from Ranking 1.*
 
-**Results:** Hardware optimization and algorithm changes can be separate skills. Opus 5.5 leads hardware optimization at 161% of the bound, followed by Sonnet 5.5 at 144% and Gemini 4 Neon at 136%, while Neon leads overall at 198% because it changes the algorithm on five kernels. GPT-6.2 Astra also changes the algorithm on five kernels, yet ranks only 10th in hardware optimization at 31%, so its algorithm changes lift it to 8th overall without matching the top models on the other 24 kernels. Opus 5.5 and Sonnet 5.5 change the algorithm only once each and reach second and third place overall mainly through hardware optimization. No open-weight model changes the algorithm or exceeds the bound on the 24 kernels; Kimi K3 leads them in hardware optimization at 37%.
+**Results:** Kernel optimization for hardware features and algorithm changes can be separate skills. Opus 5.5 leads kernel optimization for hardware features at 161% of the bound, followed by Sonnet 5.5 at 144% and Gemini 4 Neon at 136%, while Neon leads overall at 198% because it changes the algorithm on five kernels. On the 24 kernels, 10 of Opus 5.5's 12 solutions above the bound are hand-written 5th-generation tensor-core kernels compiled at run time with NVRTC ([Analysis 1](01-breaking-the-roofline.md#breaking-the-compute-bound-lower-precision-tensor-cores-for-fp32-and-16-bit-dpx-for-int32)), at a geomean of 4.6× the bound, while 8 of Neon's 15 call cuBLAS in a narrower format, at 2.3×. GPT-6.2 Astra also changes the algorithm on five kernels, yet ranks only 10th in Ranking 1 at 31%, so its algorithm changes lift it to 8th overall without matching the top models on the other 24 kernels. Opus 5.5 and Sonnet 5.5 change the algorithm only once each and reach second and third place overall mainly through kernel optimization for hardware features. No open-weight model changes the algorithm or exceeds the bound on the 24 kernels; Kimi K3 leads them in Ranking 1 at 37%.
 
 At the same time, the code behind these results is growing more complex and its algorithms less common: the fastest algorithm-changing solutions span 300 to 3,000 lines of CUDA ([Solution Code](../code/index.md)), and for `adi` we found no prior work applying the agents' method. Understanding how agents reach their results, and whether a result is correct and legitimate, may remain a research challenge for some time.

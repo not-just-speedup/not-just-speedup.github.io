@@ -7,7 +7,7 @@ In this section, we show how each model's 30 sessions divide their steps and tim
   <figcaption><strong>Figure 1.</strong> Session activity, time split, parameter-search share, kernel identification, and Analyzer labels across the 28 models, ordered by attainment rank. Click the figure or select <em>Expand figure</em> for full-screen vector zoom.</figcaption>
 </figure>
 
-**Results:** High attainment, quantitative performance modeling, and a hypothesis loop appear consistently together in the four large Claude models and Gemini 4 Neon. Long runs alone do not produce high attainment: GLM-5.3-Flash runs for 88 active hours and reaches 9% geomean, while Gemini 4 Neon reaches 198% in 38 hours. Note that almost no session stops cleanly: only 6 of 840 stops are justified, five by Opus 5.5.
+**Results:** The strongest models, the four large Claude models and Gemini 4 Neon, are also the ones that model performance quantitatively and use a hypothesis loop. Whether this behavior causes high performance or only comes with a stronger model is future work. Long runs alone do not produce high attainment: GLM-5.3-Flash runs for 88 active hours and reaches 9% geomean, while Gemini 4 Neon reaches 198% in 38 hours. Note that almost no session stops cleanly: only 6 of 840 stops are justified, five by Opus 5.5.
 
 ## Decoding Speed
 

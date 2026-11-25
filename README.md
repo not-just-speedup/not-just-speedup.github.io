@@ -8,7 +8,7 @@ Existing evaluations of coding agents mostly report end-to-end speedups under fi
 
 1. [Breaking the Roofline Bound](docs/posts/01-breaking-the-roofline.md): per-model tables for reduced precision, 16-bit DPX, NVRTC, and temporal blocking.
 2. [Algorithm Changes and Reward Hacking](docs/posts/02-algorithms-vs-hacking.md): all 19 verified algorithm changes, 13 false positives, and two reward-hacking incidents.
-3. [Ranking and Wrap-Up](docs/posts/03-ranking-and-wrap-up.md): model rankings for hardware optimization alone and with algorithm changes.
+3. [Ranking and Wrap-Up](docs/posts/03-ranking-and-wrap-up.md): model rankings for kernel optimization for hardware features alone, and with algorithm changes.
 4. [Session Behavior](docs/posts/04-session-behavior.md): how each model's sessions divide their steps and time.
 5. [Profiler and No-GPU Ablations](docs/posts/05-profilers-and-no-gpu.md): 185-pair Nsight Compute/Systems ablation and 30 sessions from a faulty-GPU incident.
 6. [Bug Analysis](docs/posts/06-silent-gpu-bugs.md): all failures by where they were caught, and how agents handle bugs (G5).
