@@ -20,7 +20,7 @@ The peaks are those of an NVIDIA B300 GPU: 75 TFLOP/s for FP32 on CUDA cores, 1.
 
 ## How the Model Was Built and Reviewed
 
-Building a performance model requires domain expertise, so we use cross-agent adversarial review: Fable 5.0 in Claude Code and GPT-6 Astra in Codex review each other's model until both agree. Three researchers checked ten kernels each and marked 13 potential issues. A final review consolidated those findings into two rules, D1 and D2, which revise 9 of the 30 kernels:
+Building a performance model requires domain expertise, so we use cross-model adversarial review: Fable 5.0 and GPT-6 Astra review each other's model until both agree. Three researchers checked ten kernels each and marked 13 potential issues. A final review consolidated those findings into two rules, D1 and D2, which revise 9 of the 30 kernels:
 
 - **D1, stencil traffic per step:** The AI model counted each array once per run, assuming arrays fit on chip across time steps. At the scored sizes, arrays spill to HBM on every step. D1 is the only change that alters a kernel's bottleneck, turning the five iterative stencils memory-bound and shifting the bound by 1.7× to 26× across the six iterative time-step kernels.
 - **D2, minimum exact operations:** The AI model counted operations from the reference C code as written. Under D2, we count the minimum exact operations needed at the scored instance. For `3mm` ($G = (AB)(CD)$ with rectangular scored dimensions), $A(B(CD))$ needs 1.381 TFLOP instead of 1.416 TFLOP for $(AB)(CD)$, 2.5% fewer. D2 also adjusts `2mm` (at most 5.5%), `gemver`, `adi`, and `heat-3d`, without altering any kernel's bottleneck.
