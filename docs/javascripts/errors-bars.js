@@ -1,6 +1,6 @@
 /* Per-model stacked bars of G5 errors: bar length = errors per session, segments = the agent's response.
    Used on two pages with different error kinds: <div data-njs-errors="kind1,kind2,..." data-final="1">.
-   Data: errors-matrix-data.js (scripts/build_l2.py). */
+   Data: errors-matrix-data.js (scripts/build_analyzer.py). */
 (function () {
   const D = window.NJS_ERRORS;
   const roots = document.querySelectorAll("[data-njs-errors]");
@@ -62,7 +62,7 @@
         const fin = r.final.wrong + r.final.crash + r.final.bv;
         h += (r.fw ? `<div class="efw">${esc(r.fw)}</div>` : "") +
           `<div class="er"><span class="en">${esc(r.name)}</span><span class="eb" title="${esc(r.name)}: ${r.n} errors in 30 sessions">${seg(r.cnt, r.n, r.per)}<b>${r.per.toFixed(1)}</b></span>` +
-          (withFinal ? `<span class="ef" title="Level-1 wrong output ${r.final.wrong}, crash ${r.final.crash}; Bug Verifier ${r.final.bv}">${fin ? "■".repeat(fin) : "·"}</span>` : "") + "</div>";
+          (withFinal ? `<span class="ef" title="Verifier: wrong output ${r.final.wrong}, crash ${r.final.crash}; Bug Verifier ${r.final.bv}">${fin ? "■".repeat(fin) : "·"}</span>` : "") + "</div>";
       });
       const allFinal = rows.reduce((s, r) => s + r.final.wrong + r.final.crash + r.final.bv, 0);
       h += `<div class="er et"><span class="en">All models</span><span class="eb" title="${totN} errors in ${totS} sessions">${seg(tot, totN, Math.min(max, totN / totS))}<b>${(totN / totS).toFixed(1)}</b></span>` +

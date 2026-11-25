@@ -9,7 +9,7 @@ The paper's Table 1 reports each model's mean tokens, active time, and cost over
 - **Cost:** we price every token at the vendor's list price as of November 2026. This is not a bill: the closed models ran on subscriptions and the open-weight models on RiVault. Seed-OSS-36B, Nemotron 3 Ultra, and Nemotron 3.5 Super have no published price and are left unpriced.
 - **All sessions count:** a session that fails still spent its tokens and time.
 
-The [Inspection Framework](framework.md#cost) page defines these metrics. In every heatmap below, a black corner marks a session that failed or returned incorrect results (at Level 1 or in Bug Verification), and a dashed frame marks a passed session with a bug marked, as in the paper's Figure 2: 25 solutions with a reproduced bug outside our evaluation setting, kept and scored, and five Gemini sessions that hung on their own test program and were continued. The two footer rows give each model's geometric and arithmetic mean over its 30 sessions; the arithmetic mean equals Table 1 of the paper.
+The [Inspection Framework](framework.md#cost) page defines these metrics. In every heatmap below, a black corner marks a session that failed or returned incorrect results (in the Verifier or the Bug Verifier), and a dashed frame marks a passed session with a bug marked, as in the paper's Figure 2: 25 solutions with a reproduced bug outside our evaluation setting, kept and scored, and five Gemini sessions that hung on their own test program and were continued. The two footer rows give each model's geometric and arithmetic mean over its 30 sessions; the arithmetic mean equals Table 1 of the paper.
 
 ## Tokens
 

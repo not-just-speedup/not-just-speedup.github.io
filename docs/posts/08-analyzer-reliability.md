@@ -4,12 +4,12 @@ Most labels on this site come from one LLM judge: Claude analyzes all 840 sessio
 
 ## Claude Against Codex Agreement Across 180 Traces
 
-To check whether our Level-2 behavioral labels depend on a single judge model, we analyzed all 180 sessions of the six Claude models twice using the same preprocessed trace package (`steps.v3`), the same rubric (11 goals, 17 fixed categorical fields), and the same prompt:
+To check whether our Analyzer's behavioral labels depend on a single judge model, we analyzed all 180 sessions of the six Claude models twice using the same preprocessed trace package (`steps.v3`), the same rubric (11 goals, 17 fixed categorical fields), and the same prompt:
 
 - **Claude analyst:** Opus 5.5 on 150 trials and Fable 5.2 on Opus 5.5's 30 trials to avoid self-evaluation.
 - **Codex analyst:** GPT-6.1 Sol at `ultra` reasoning effort on all 180 trials.
 
-**How we compare:** the comparison itself is a deterministic script, not an LLM. For each of the 17 fixed categorical fields, it normalizes both answers to the field's label set (for example, `yes: level 1 confirms` becomes `yes`) and counts the trials in which the two labels are identical. Only the labels being compared come from the two LLM analysts; the agreement rates are computed. For the nine free-form list fields, the script compares only the number of entries, not their content, and it does not judge which analyst is right where they differ.
+**How we compare:** the comparison itself is a deterministic script, not an LLM. For each of the 17 fixed categorical fields, it normalizes both answers to the field's label set (for example, an answer `yes` followed by a short justification becomes `yes`) and counts the trials in which the two labels are identical. Only the labels being compared come from the two LLM analysts; the agreement rates are computed. For the nine free-form list fields, the script compares only the number of entries, not their content, and it does not judge which analyst is right where they differ.
 
 Figure 1 reports exact label agreement across all 17 fixed rubric fields.
 

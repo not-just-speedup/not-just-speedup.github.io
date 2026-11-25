@@ -13,7 +13,7 @@ Existing evaluations of coding agents mostly report end-to-end speedups under fi
 5. [Profiler and No-GPU Ablations](docs/posts/05-profilers-and-no-gpu.md): 185-pair Nsight Compute/Systems ablation and 30 sessions from a faulty-GPU incident.
 6. [Bug Analysis](docs/posts/06-silent-gpu-bugs.md): all failures by where they were caught, and how agents handle bugs (G5).
 7. [Bugs Beyond the Verifier](docs/posts/07-bugs-beyond-the-verifier.md): bugs the Analyzer finds in solutions the Verifier passed, confirmed by the Bug Verifier, with verbatim CUDA cases.
-8. [Analyzer Cross-Check: Claude against Codex](docs/posts/08-analyzer-reliability.md): Claude against Codex agreement on the Level-2 labels of 180 traces, over 17 rubric fields.
+8. [Analyzer Cross-Check: Claude against Codex](docs/posts/08-analyzer-reliability.md): Claude against Codex agreement on the Analyzer labels of 180 traces, over 17 rubric fields.
 
 ## Cost
 

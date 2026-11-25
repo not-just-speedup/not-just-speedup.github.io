@@ -87,7 +87,7 @@ Measured by deterministic trace preprocessing, without an LLM. Each value is a p
 
 ## Analyzer Labels by Goal
 
-Counts of sessions (of 30 per model) with each label, from the Level-2 Analyzer's reports; the goals are defined on the [Inspection Framework](../framework.md#analyzer-goals) page. A dot means zero.
+Counts of sessions (of 30 per model) with each label, from the Analyzer's reports; the goals are defined on the [Inspection Framework](../framework.md#analyzer-goals) page. A dot means zero.
 
 
 ### G2: Correctness Judgement
@@ -605,7 +605,7 @@ Counts of sessions (of 30 per model) with each label, from the Level-2 Analyzer'
 
 </div>
 
-*Table 15. Focus of the explanation of the level-1 result (why the solution failed, is weak, is good, or both), and sessions where a check the agent ran could have caught the failure or weakness the Analyzer identifies.*
+*Table 15. Focus of the explanation of the Verifier result (why the solution failed, is weak, is good, or both), and sessions where a check the agent ran could have caught the failure or weakness the Analyzer identifies.*
 
 
 ### G8 to G10: Legitimacy, Precision, and Generality

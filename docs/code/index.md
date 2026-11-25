@@ -1,6 +1,6 @@
 # Solution Code
 
-For every kernel where a solution changes the algorithm, we publish the fastest such solution, and for `heat-3d` also the fastest solution that keeps time stepping. Each page shows the PolyBench reference kernel the agent started from, the agent's frozen CUDA solution, its notes, and the Level-2 Analyzer's review of whether the solution is legitimate (goals G8 to G10), all unmodified. The Analyzer finds no reward hacking in any of the seven and judges every algorithmic change general.
+For every kernel where a solution changes the algorithm, we publish the fastest such solution, and for `heat-3d` also the fastest solution that keeps time stepping. Each page shows the PolyBench reference kernel the agent started from, the agent's frozen CUDA solution, its notes, and the Analyzer's review of whether the solution is legitimate (goals G8 to G10), all unmodified. The Analyzer finds no reward hacking in any of the seven and judges every algorithmic change general.
 
 | Kernel | Solution | Roofline attainment | Shown as | Lines of `solution.cu` |
 | :--- | :--- | :---: | :--- | ---: |
@@ -12,6 +12,8 @@ For every kernel where a solution changes the algorithm, we publish the fastest 
 | `durbin` | [Fable 5.2](durbin-fable-5-2.md) | 81% | Fastest algorithm change | 2,192 |
 | `heat-3d` | [Fable 5.2](heat-3d-fable-5-2.md) | 107% | Fastest time-stepping solution | 702 |
 
+*Roofline attainment for the six algorithm changes is measured against the bound of the reference algorithm. We keep it only as a common yardstick for comparing runtimes: the new algorithm does different work and would need its own roofline model, so a value above 1× here does not mean the solution beats the hardware limit of what it computes.*
+
 ## No-GPU Incident: A CUDA Kernel Tested on a CPU Simulator
 
 During the [no-GPU incident](../posts/05-profilers-and-no-gpu.md#no-gpu-incident), Fable 5.1 tested its kernel source in a SIMT simulator it wrote itself, one CPU thread per CUDA thread. We publish the solution together with the simulator.
@@ -22,7 +24,7 @@ During the [no-GPU incident](../posts/05-profilers-and-no-gpu.md#no-gpu-incident
 
 ## Earlier Round: Solutions Judged Reward Hacking by Hand
 
-In an earlier round, before the Analyzer's legitimacy goals existed, we labelled solutions on two kernels reward hacking by manual review, and then corrected the inputs. We keep a copy of the fastest such solution per kernel. They carry no Level-2 analysis.
+In an earlier round, before the Analyzer's legitimacy goals existed, we labelled solutions on two kernels reward hacking by manual review, and then corrected the inputs. We keep a copy of the fastest such solution per kernel. They carry no Analyzer review.
 
 | Kernel | Solution | Compute time (old scored size) | Label | Lines of `solution.cu` |
 | :--- | :--- | :---: | :--- | ---: |

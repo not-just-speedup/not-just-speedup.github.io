@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Session statistics and Level-2 Analyzer labels for the Session Behavior page.
+Session statistics and Analyzer labels for the Session Behavior page.
 
 Sources: the paper's figures/behavior/behavior.csv (deterministic preprocessing, one row per session, with the path
-of the session's Level-2 report) and those 840 report.json files (goals v10, Opus 5.5; Fable 5.2 for Opus 5.5's
-sessions) in the trial records. Writes data/l2.csv (one row per session, normalised labels) and
+of the session's Analyzer report) and those 840 report.json files (goals v10, Opus 5.5; Fable 5.2 for Opus 5.5's
+sessions) in the trial records. Writes data/analyzer-labels.csv (one row per session, normalised labels) and
 includes/session-behavior-tables.md (per-model tables, included by docs/posts/04-session-behavior.md).
 
 Labels are normalised to each goal's label set (analysis-goals-v10): a value that starts with a known label takes
@@ -128,7 +128,7 @@ def sessions() -> list[dict]:
             d[k] = float(b[k] or 0)
         d["ident"] = b["ident"]
         rows.append(d)
-    with open(os.path.join(ROOT, "data", "l2.csv"), "w", newline="") as f:
+    with open(os.path.join(ROOT, "data", "analyzer-labels.csv"), "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
         w.writeheader()
         w.writerows(rows)
@@ -208,7 +208,7 @@ def write_errors_data(rows: list[dict]) -> None:
         for k, x in zip(ks, rs):
             m["c"].setdefault(k, {}).setdefault(x, 0)
             m["c"][k][x] += 1
-    # bugs left at the end, per model: level-1 wrong output or crash, and Bug Verifier failures
+    # bugs left at the end, per model: Verifier wrong output or crash, and Bug Verifier failures
     for r in csv.DictReader(open(os.path.join(PAPER, "figures/attainment/attainment.csv"))):
         if r["state"] == "pass" or r["agent"] not in out:
             continue
@@ -295,9 +295,9 @@ def main() -> None:
                            ("Sessions with compaction", "compact"), ("Sessions naming the kernel", "ident")],
                     tcell, "Table 2. Mean active time, its split between waiting on the model and running tools (the two can overlap), mean shell steps, the share of shell steps that enumerate parameters, and the number of sessions (of 30) with at least one context compaction and that name the PolyBench kernel."))
 
-    # ---- Level-2 labels
+    # ---- Analyzer labels
     md.append("\n## Analyzer Labels by Goal\n")
-    md.append("Counts of sessions (of 30 per model) with each label, from the Level-2 Analyzer's reports; the goals are defined on the [Evaluation Framework](../framework.md#analyzer-goals) page. A dot means zero.\n")
+    md.append("Counts of sessions (of 30 per model) with each label, from the Analyzer's reports; the goals are defined on the [Inspection Framework](../framework.md#analyzer-goals) page. A dot means zero.\n")
     def cat_table(field, labels, caption):
         return table(rows, [(l, l) for l in labels], lambda sub, k: count(field, k)(sub), caption)
     H("G2: Correctness Judgement")
@@ -334,7 +334,7 @@ def main() -> None:
     H("G7: Verification Result")
     md.append(table(rows, [(l, l) for l in L["focus"]] + [("Failure catchable by the agent", "_c")],
                     lambda sub, k: count("g7_catchable", "yes")(sub) if k == "_c" else count("g7_focus", k)(sub),
-                    "Table 15. Focus of the explanation of the level-1 result (why the solution failed, is weak, is good, or both), and sessions where a check the agent ran could have caught the failure or weakness the Analyzer identifies."))
+                    "Table 15. Focus of the explanation of the Verifier result (why the solution failed, is weak, is good, or both), and sessions where a check the agent ran could have caught the failure or weakness the Analyzer identifies."))
     H("G8 to G10: Legitimacy, Precision, and Generality")
     md.append(table(rows, [(l, l) for l in L["g8"]] + [(l, l) for l in L["g9"]],
                     lambda sub, k: count("g8_verdict", k)(sub) if k in L["g8"] else count("g9_acceptance", k)(sub),

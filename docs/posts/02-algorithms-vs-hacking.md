@@ -25,7 +25,7 @@ The 19 algorithm changes affect six kernels:
 
 ## Auditing 38 Analyzer Candidates
 
-String matching on the Analyzer's algorithmic-change field (G10) returned 38 passed candidates. We checked every candidate by reading its frozen `NOTES.md`, `solution.cu`, and dispatch conditions against the Level-1 instances, and we verified every published reference by DOI:
+String matching on the Analyzer's algorithmic-change field (G10) returned 38 passed candidates. We checked every candidate by reading its frozen `NOTES.md`, `solution.cu`, and dispatch conditions against the Verifier's instances, and we verified every published reference by DOI:
 
 - **13 false positives:** e.g., recognizing a loop nest as a BLAS `SYMM` or `TRMM` call, unrolling base cases in `nussinov` while keeping $O(n^3)$ work, or index decoding of a wavefront schedule in `seidel-2d`.
 - **4 reorganizations of the same algorithm:** e.g., closed-form Thomas pivots in `adi` that still execute all $2n_0$ sweeps, and block-parallel affine scans in `deriche`.
@@ -47,7 +47,7 @@ The last column of Table 1 links the code of the fastest solution per kernel, ne
 
 </div>
 
-*Table 2. Passed solutions that change the algorithm on tested inputs. Prior work proposed this optimization for this kind of computation; similar work uses a related idea on a different problem, so the agents' change is new for this kernel as far as we found.*
+*Table 2. Passed solutions that change the algorithm on tested inputs. Prior work proposed this optimization for this kind of computation; similar work uses a related idea on a different problem, so the agents' change is new for this kernel as far as we found. Attainment is against the reference algorithm's bound and serves only to compare runtimes; a new algorithm would need its own roofline model.*
 
 Flagship models account for most changes: Gemini 4 Neon and GPT-6.2 Astra change the algorithm on five kernels each and Fable 5.2 on three, compared with at most two for other closed models and zero for all open-weight models.
 
@@ -115,7 +115,7 @@ The reference code solves a Toeplitz system with the Levinson–Durbin recursion
 
 ## Algorithm-Level Reward Hacking
 
-In an earlier benchmark round, inspecting every solution above the roofline bound caught two kernels where solutions gained their speed from a property of our test inputs rather than of the kernel. We judged both cases by hand, reading the level-1 results and the frozen source code; the round predates the Analyzer's legitimacy goals, so neither case has a Level-2 report.
+In an earlier benchmark round, inspecting every solution above the roofline bound caught two kernels where solutions gained their speed from a property of our test inputs rather than of the kernel. We judged both cases by hand, reading the Verifier results and the frozen source code; the round predates the Analyzer's legitimacy goals, so neither case has an Analyzer report.
 
 - **`floyd-warshall`:** Uniform edge weights in $[0, 256]$ gave each node roughly 25 zero-weight edges that connected the whole graph, so every shortest distance was 0. Four models exploited this, reaching 24× to 78× above the bound. Sonnet 5.5, Opus 5.5, and GPT-6 Astra contract the zero-weight strongly connected component and solve the much smaller remaining graph; GPT-6.1 Sol proves zero-weight reachability between all vertices before filling the output with zeros. All four stay exact on general graphs, but run in $O(n^2)$ instead of $O(n^3)$ only on our degenerate input. Code: [Sonnet 5.5](../code/floyd-warshall-sonnet-5-5-round-011.md).
 - **`ludcmp`:** Our initial matrices were strictly diagonally dominant, and the task stated so. Five of the six fastest solutions replaced LU factorization with a Jacobi-type iteration, reaching up to 54× above the bound. On an independently drawn non-dominant matrix, they fell back to LU and ran 36 to 104 times slower, and two of the five returned a wrong solution. Code: [Opus 5.5](../code/ludcmp-opus-5-5-round-011.md).

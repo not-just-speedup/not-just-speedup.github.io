@@ -9,4 +9,4 @@ Each page below expands on one part of our evaluation of coding agents on GPU HP
 - [5. Profiler and No-GPU Ablations](05-profilers-and-no-gpu.md): 185 paired Nsight Compute/Systems sessions across seven models and 30 sessions from a CUDA error 46 GPU failure.
 - [6. Bug Analysis](06-silent-gpu-bugs.md): all 102 failed sessions by where they were caught, and how agents handle bugs during a session (G5).
 - [7. Bugs Beyond the Verifier](07-bugs-beyond-the-verifier.md): the bugs the Analyzer finds in solutions the Verifier passed, confirmed by the Bug Verifier: 77 claims, 56 reproduced defects, failure rates by model, root causes, and six CUDA case studies.
-- [8. Analyzer Cross-Check: Claude against Codex](08-analyzer-reliability.md): Claude against Codex agreement on the Level-2 labels of 180 traces, over 17 rubric fields.
+- [8. Analyzer Cross-Check: Claude against Codex](08-analyzer-reliability.md): Claude against Codex agreement on the Analyzer labels of 180 traces, over 17 rubric fields.

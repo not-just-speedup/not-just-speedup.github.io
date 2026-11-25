@@ -20,7 +20,9 @@ Antigravity); the owner decides what is published.
   `data/`. When you change a number, recompute it from `data/` and say how.
 - The study has 28 models (Kimi K3.1 Pro was added on 2026-11-23); 840 sessions.
 - Report faster and slower counts, not only a geomean near 1. Do not restate a table in the prose next to it.
-- Define every label before using it (G1-G11, Level 1/2, Bug Verifier); prefer plain words.
+- Define every label before using it (G1-G11, Bug Verifier); prefer plain words.
+- Never write "L1", "L2", "Level 1" or "Level 2" for our stages: they are internal development terms. Use the paper's names,
+  the Verifier and the Analyzer ("L2 cache" as GPU hardware is fine). Verbatim agent and Analyzer files are left as they are.
 
 ## Build and data
 

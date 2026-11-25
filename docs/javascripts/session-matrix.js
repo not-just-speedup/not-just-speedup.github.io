@@ -1,5 +1,5 @@
 /* Interactive session matrix for the Session Behavior page: 30 kernels x 28 models, one cell per session,
-   coloured by the chosen Level-2 label or session statistic. Data: session-matrix-data.js (scripts/build_l2.py). */
+   coloured by the chosen Analyzer label or session statistic. Data: session-matrix-data.js (scripts/build_analyzer.py). */
 (function () {
   const D = window.NJS_SESSIONS;
   const roots = document.querySelectorAll("[data-njs-matrix]");
@@ -53,7 +53,7 @@
       tri: (c) => (c.g10_not_general > 0 ? P.amber : null), triLabel: "Corner: a change judged not general (G10)",
       note: "G8 reward-hacking review, with precision (G9) and generality (G10) marks." },
     focus: { label: "How it judges performance · G7", fill: cat(FOCUS), key: "g7_focus", legend: legendOf(FOCUS),
-      note: "What the Analyzer explains about the level-1 result, read from the solution's speed relative to the fastest solution of the kernel." },
+      note: "What the Analyzer explains about the Verifier result, read from the solution's speed relative to the fastest solution of the kernel." },
     time: { label: "Active time", fill: (c) => blues(log01(c.min, 1, 1000)), text: (c) => (c.min >= 100 ? Math.round(c.min) : c.min >= 10 ? Math.round(c.min) : c.min.toFixed(0)),
       legend: [["1 min", blues(0)], ["10", blues(1 / 3)], ["100", blues(2 / 3)], ["1,000 min", blues(1)]], note: "Active session time T_e2e in minutes, log scale." },
     perf: { label: "Performance steps", fill: (c) => mints(c.pa / 0.5), text: (c) => Math.round(100 * c.pa),

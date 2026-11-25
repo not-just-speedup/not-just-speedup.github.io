@@ -445,7 +445,7 @@ def draw_bugs_by_model(summary: dict) -> None:
 
     # Column header for right rate column
     RX = X0 + W + 14.0
-    P.append(rf"\node[anchor=west, inner sep=0pt] at ({RX:.1f},{TOP + 4.5:.1f}) {{\textbf{{Fail / L1 pass}}}};" )
+    P.append(rf"\node[anchor=west, inner sep=0pt] at ({RX:.1f},{TOP + 4.5:.1f}) {{\textbf{{Fail / Verifier pass}}}};" )
 
     # Vertical grid lines
     for t in range(0, MAXV + 1):

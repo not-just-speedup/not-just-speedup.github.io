@@ -1,16 +1,16 @@
 # Bugs Beyond the Verifier
 
-A solution that passes our deterministic Level-1 Verifier can still be wrong on allowed inputs the Verifier does not test. This section covers exactly these bugs: the Analyzer finds them by reading the trace and the code of solutions that the Verifier has already accepted, and the Bug Verifier confirms them by running the code. They are a large share of all bugs: the Bug Verifier fails 28 solutions that the Verifier passed, against 24 wrong outputs and crashes the Verifier itself catches ([Analysis 6](06-silent-gpu-bugs.md)), and it reproduces another 27 borderline bugs that we keep but mark. We compare failure rates across model classes, classify root causes, and examine six verbatim CUDA defects reproduced on NVIDIA B300 GPUs.
+A solution that passes our deterministic Verifier can still be wrong on allowed inputs the Verifier does not test. This section covers exactly these bugs: the Analyzer finds them by reading the trace and the code of solutions that the Verifier has already accepted, and the Bug Verifier confirms them by running the code. They are a large share of all bugs: the Bug Verifier fails 28 solutions that the Verifier passed, against 24 wrong outputs and crashes the Verifier itself catches ([Analysis 6](06-silent-gpu-bugs.md)), and it reproduces another 27 borderline bugs that we keep but mark. We compare failure rates across model classes, classify root causes, and examine six verbatim CUDA defects reproduced on NVIDIA B300 GPUs.
 
 ## Method
 
-Across 840 sessions, 766 solutions passed our deterministic Level-1 Verifier. Level 1 checks five correctness sizes, a speed-gate size, a large-reference size, and the scored size against an FP64 reference for FP32 kernels and bit-exact outputs for integer kernels. For every passing solution, the Analyzer inspects the trace and final source code and flags suspected bugs on allowed inputs that the Verifier's instances do not exercise (G10). Every bug on this page was therefore missed by the Verifier and found by the Analyzer.
+Across 840 sessions, 766 solutions passed our deterministic Verifier. The Verifier checks five correctness sizes, a speed-gate size, a large-reference size, and the scored size against an FP64 reference for FP32 kernels and bit-exact outputs for integer kernels. For every passing solution, the Analyzer inspects the trace and final source code and flags suspected bugs on allowed inputs that the Verifier's instances do not exercise (G10). Every bug on this page was therefore missed by the Verifier and found by the Analyzer.
 
 Because the Analyzer never runs code, every claim is treated as unverified until our isolated Bug Verifier runs the unmodified binary on a dedicated B300 GPU and produces both a failing allowed input and a nearby passing control. Across 67 passing solutions, the Analyzer raised 77 claims. Figure 1 summarizes the execution verdicts and scoring outcomes.
 
 <figure class="njs-fig njs-wide" markdown="span">
   ![Verification outcomes from 77 Analyzer claims to 56 reproduced bugs and final scoring outcomes](../assets/bugs_funnel.svg)
-  <figcaption><strong>Figure 1.</strong> Bug Verifier outcomes across all 77 bugs the Analyzer claims in solutions the Verifier passed (top), and scoring classification of the 56 reproduced defects (bottom). Every claim targeted a solution that had already passed deterministic Level-1 verification.</figcaption>
+  <figcaption><strong>Figure 1.</strong> Bug Verifier outcomes across all 77 bugs the Analyzer claims in solutions the Verifier passed (top), and scoring classification of the 56 reproduced defects (bottom). Every claim targeted a solution that had already passed the deterministic Verifier.</figcaption>
 </figure>
 
 Of the 77 claims, the Bug Verifier reproduces 56 (72.7%), cannot reproduce 11 (14.3%), rejects 9 as not a bug (11.7%), and cannot test 1 watchdog trigger. We inspect every reproduced defect and separate computation errors from engineering errors:
@@ -23,16 +23,16 @@ One reproduced claim, `Sonnet 5.5` returning `+0.0` instead of `-0.0` in never-w
 
 ## Model Reliability
 
-Raw bug counts depend on how many kernels a model passes at Level 1. Figure 2 reports both reproduced claim counts and the fraction of Level-1 passing solutions disqualified by the Bug Verifier.
+Raw bug counts depend on how many kernels a model passes in the Verifier. Figure 2 reports both reproduced claim counts and the fraction of Verifier-passed solutions disqualified by the Bug Verifier.
 
 <figure class="njs-fig njs-wide" markdown="span">
-  ![Reproduced bugs by model showing failing rate per Level-1 passed solution](../assets/bugs_by_model.svg)
+  ![Reproduced bugs by model showing failing rate per Verifier-passed solution](../assets/bugs_by_model.svg)
   <figcaption><strong>Figure 2.</strong> Reproduced bugs by model across the 20 models with at least one reproduced claim, ordered within closed and open-weight groups by failing count. Eight models had zero reproduced bugs: Fable 5.2, Fable 5.1, Haiku 5.5, GPT-6.2 Astra, GPT-6 Astra, GPT-6.2 Sol, GPT-6 Sol, and GPT-6 Luna.</figcaption>
 </figure>
 
-**Results:** Open-weight models fail Bug Verification at 3.2× the rate of closed models. Table 1 aggregates the 766 Level-1 passes across model tiers.
+**Results:** Open-weight models fail Bug Verification at 3.2× the rate of closed models. Table 1 aggregates the 766 Verifier passes across model tiers.
 
-| Model group | Models | Level-1 passes | Disqualified (comp. / eng.) | Failing rate |
+| Model group | Models | Verifier passes | Disqualified (comp. / eng.) | Failing rate |
 | :--- | :---: | :---: | :---: | :---: |
 | Flagship closed (Fable 5.2, Neon, GPT-6.2 Astra) | 3 | 89 | 0 (0 / 0) | 0.0% |
 | Other closed, excluding Haiku 4.5 | 12 | 354 | 5 (2 / 3) | 1.4% |
@@ -43,8 +43,8 @@ Raw bug counts depend on how many kernels a model passes at Level 1. Figure 2 re
 
 Three observations follow from Figure 2 and Table 1:
 
-1. **The three flagship models have zero disqualifying bugs.** Across 89 Level-1 passing solutions from Fable 5.2, Gemini 4 Neon, and GPT-6.2 Astra, no solution fails Bug Verification; Neon carries only one borderline allocation error at 1.4 billion rows by 2 columns.
-2. **Hand-written low-level optimization does not imply higher defect rates among top closed models.** Across 119 Level-1 passes from Fable 5.2, Opus 5.5, Sonnet 5.5, and Gemini 4 Neon—which write runtime NVRTC `tcgen05.mma` kernels, 16-bit DPX, and spectral transforms—only one fails (`Opus 5.5` on `lu`, deadlocking on call 2,541,396).
+1. **The three flagship models have zero disqualifying bugs.** Across 89 Verifier-passed solutions from Fable 5.2, Gemini 4 Neon, and GPT-6.2 Astra, no solution fails Bug Verification; Neon carries only one borderline allocation error at 1.4 billion rows by 2 columns.
+2. **Hand-written low-level optimization does not imply higher defect rates among top closed models.** Across 119 Verifier passes from Fable 5.2, Opus 5.5, Sonnet 5.5, and Gemini 4 Neon—which write runtime NVRTC `tcgen05.mma` kernels, 16-bit DPX, and spectral transforms—only one fails (`Opus 5.5` on `lu`, deadlocking on call 2,541,396).
 3. **Disqualifying defects cluster in specific open-weight models and Haiku 4.5.** DeepSeek-V4-Flash loses 5 of 29 passes (17.2%, including 4 computation errors), Kimi K3 loses 4 of 29 (13.8%, 3 computation errors), GLM-5.3-Flash loses 3 of 26 (11.5%), and Haiku 4.5 loses 4 of 21 (19.0%). In contrast, GLM-5.2 passes all 30 kernels with zero failing bugs, relying mainly on cuBLAS and direct kernels.
 
 ## Root Causes and Affected Kernels
@@ -152,7 +152,7 @@ __device__ __forceinline__ int warp_max(int v) {
 
 **Defect:** Every non-exited lane named in `0xffffffffu` must execute `__shfl_xor_sync`. Reading inactive lanes `8..31` is undefined under CUDA semantics.
 
-**Observed on B300:** On full-domain random draws with positive scores, Level 1 passes. On negative allowed inputs (`buf1 = -256`), inactive lanes return `0`, corrupting every cell of width 256 or greater: 130,015,875 wrong cells per call at the scored size `n0 = 16,381`, with exit code `0`.
+**Observed on B300:** On full-domain random draws with positive scores, the Verifier passes it. On negative allowed inputs (`buf1 = -256`), inactive lanes return `0`, corrupting every cell of width 256 or greater: 130,015,875 wrong cells per call at the scored size `n0 = 16,381`, with exit code `0`.
 
 ### 5. Unused `nthreads` Parameter and Padding Mismatch (`DeepSeek-V4-Flash`, `seidel-2d`; `Gemini 4 Carbon`, `2mm`)
 
@@ -189,4 +189,4 @@ Two defects show host and device assumptions drifting apart:
 
 The Bug Verifier also measures how reliable static LLM code review is on real CUDA kernels. While 56 of 77 claims (72.7%) reproduced, 9 claims (11.7%) were rejected as not a bug, such as misreading BLAS `beta = 0` semantics or flagging unreachable branches. Another 11 claims (14.3%) did not reproduce, mostly formal PTX memory-model gaps (for example, polling flags with `ld.relaxed` without an acquire fence) that did not reorder on B300 hardware.
 
-**Summary:** Static LLM review alone produces too many false positives and unconfirmed claims to score a benchmark directly. Pairing it with an execution-based Bug Verifier catches 28 real failures beyond Level 1 without false disqualifications. All 77 claims are listed in `data/bugs.csv`.
+**Summary:** Static LLM review alone produces too many false positives and unconfirmed claims to score a benchmark directly. Pairing it with an execution-based Bug Verifier catches 28 real failures beyond the Verifier without false disqualifications. All 77 claims are listed in `data/bugs.csv`.

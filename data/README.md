@@ -18,7 +18,7 @@ Per-(model, kernel) scoring results for all 28 models, 840 rows.
 
 ## Bugs Dataset (`data/bugs.csv`, `data/bugs_summary.json`) {#bugs-dataset}
 
-Structured ledger of all 77 Bug Verifier claims across 67 Level-1 passing solutions (`data/bugs.csv`), together with per-model, per-root-cause, and per-kernel aggregates (`data/bugs_summary.json`).
+Structured ledger of all 77 Bug Verifier claims across 67 Verifier-passed solutions (`data/bugs.csv`), together with per-model, per-root-cause, and per-kernel aggregates (`data/bugs_summary.json`).
 
 | Column | Description |
 | :--- | :--- |
