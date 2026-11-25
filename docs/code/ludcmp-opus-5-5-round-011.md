@@ -17,7 +17,7 @@ The input domain published to the agent at the time:
 
 The task stated that the matrix is strictly diagonally dominant with a unit diagonal and checked only the solution vector $x$. The solution never forms $L$ and $U$: it solves $Ax = b$ by preconditioned iterative refinement, with an accurate float-float residual and a few Jacobi sweeps on a sparse preconditioner, which converges in 3 to 4 passes over the matrix on such inputs. Its notes describe a fallback to cuSOLVER LU without pivoting when the iteration does not converge, so it stays correct on harder matrices but loses its speed. Five of the six fastest `ludcmp` solutions of that round used a Jacobi-type iteration; on an independently drawn non-dominant matrix they fell back to LU and ran 36 to 104 times slower, and two of the five returned a wrong $x$.
 
-We replaced the input with a general dense matrix whose rows are in partial-pivoting order, without the diagonal-dominance promise. No solution of the new input exceeds the bound.
+We replaced the input with a general dense matrix whose rows are in partial-pivoting order, without the diagonal-dominance promise. On the new input, only Gemini 4 Carbon's solution exceeds the bound, at 118%, through reduced precision in cuSOLVER rather than an input shortcut.
 
 ## Reference Kernel
 

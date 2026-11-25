@@ -8,7 +8,7 @@ Of the 840 sessions, 102 do not count as passed. The Verifier catches 74 of them
 
 <div class="njs-table" markdown="1">
 
-| Model | No solution | Build failure | Crash | Wrong output | Too slow | Computation error | Engineering error | Total failed |
+| Model | No solution | Build failure | Crash | Wrong output (Verifier) | Too slow | Wrong output (Bug Verifier) | Engineering error (Bug Verifier) | Total failed |
 | :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | Fable 5.2 | · | · | · | · | · | · | · | · |
 | Fable 5.1 | · | · | · | 2 | · | · | · | 2 |
@@ -42,7 +42,7 @@ Of the 840 sessions, 102 do not count as passed. The Verifier catches 74 of them
 
 </div>
 
-*Table 1. Failed sessions by model, stage, and kind. Verifier: no solution submitted, a solution that does not build under our toolchain, a crash, a wrong output, or a run more than 1.5× slower than the multi-threaded CPU reference. Bug Verifier: computation and engineering errors on allowed inputs beyond the Verifier's, described below. Too slow is a performance gate, not a bug.*
+*Table 1. Failed sessions by model, stage, and kind. Verifier: no solution submitted, a solution that does not build under our toolchain, a crash, a wrong output, or a run more than 1.5× slower than the multi-threaded CPU reference. Bug Verifier: wrong outputs and engineering errors on allowed inputs beyond the Verifier's, described below. Too slow is a performance gate, not a bug.*
 
 Most Verifier failures were within the agent's reach: for 68 of the 74, the Analyzer (G7) judges that a check the agent could have run would have caught the failure. Beyond the 28 failures, the Bug Verifier also reproduces 27 borderline bugs in 25 passed solutions that are kept and marked, and it does not confirm 21 of the Analyzer's 77 claims ([Analysis 7](07-bugs-beyond-the-verifier.md)).
 

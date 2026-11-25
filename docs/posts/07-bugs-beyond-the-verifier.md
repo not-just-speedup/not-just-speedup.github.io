@@ -13,11 +13,11 @@ Because the Analyzer never runs code, every claim is treated as unverified until
   <figcaption><strong>Figure 1.</strong> Bug Verifier outcomes across all 77 bugs the Analyzer claims in solutions the Verifier passed (top), and scoring classification of the 56 reproduced defects (bottom). Every claim targeted a solution that had already passed the deterministic Verifier.</figcaption>
 </figure>
 
-Of the 77 claims, the Bug Verifier reproduces 56 (72.7%), cannot reproduce 11 (14.3%), rejects 9 as not a bug (11.7%), and cannot test 1 watchdog trigger. We inspect every reproduced defect and separate computation errors from engineering errors:
+Of the 77 claims, the Bug Verifier reproduces 56 (72.7%), cannot reproduce 11 (14.3%), rejects 9 as not a bug (11.7%), and cannot test 1 watchdog trigger. We inspect every reproduced defect and separate wrong outputs from engineering errors:
 
-- **Computation errors:** the solution returns wrong numerical outputs, often with exit code `0` and no CUDA error. We fail 14 solutions with computation errors under our dedicated-GPU setting.
+- **Wrong outputs:** the solution returns wrong numerical outputs on an allowed input the Verifier does not test, often with exit code `0` and no CUDA error. We fail 14 solutions with wrong outputs under our dedicated-GPU setting.
 - **Engineering errors:** the solution fails on an allowed input without returning a wrong answer, such as a crash, illegal address, zero launch grid, hang, allocation error, or timeout. We fail 14 solutions whose engineering errors fail standard checks.
-- **Borderline defects (kept and marked):** 27 reproduced bugs across 25 solutions require conditions outside our evaluation setting and are kept but marked. They comprise 16 extreme-dimension grid or allocation limits (one dimension from roughly 70,000 to 1.4 billion), 4 out-of-bounds reads with unaffected outputs shown only by a memory checker, 5 co-resident GPU load hazards (3 computation races, 1 persistent-kernel SM hang, and 1 optional-allocation sticky error), 1 fixed-scale FP16 split accuracy drop on `1e-5` inputs (`Opus 5.5` on `2mm`, which meets FP32 accuracy on the task's `[-1, 1]` domain), and 1 slow-but-correct fallback (`Sonnet 5.5` on `seidel-2d`, still about 280× as fast as single-threaded CPU).
+- **Borderline defects (kept and marked):** 27 reproduced bugs across 25 solutions require conditions outside our evaluation setting and are kept but marked. They comprise 16 extreme-dimension grid or allocation limits (one dimension from roughly 70,000 to 1.4 billion), 4 out-of-bounds reads with unaffected outputs shown only by a memory checker, 5 co-resident GPU load hazards (3 races that produce wrong outputs, 1 persistent-kernel SM hang, and 1 optional-allocation sticky error), 1 fixed-scale FP16 split accuracy drop on `1e-5` inputs (`Opus 5.5` on `2mm`, which meets FP32 accuracy on the task's `[-1, 1]` domain), and 1 slow-but-correct fallback (`Sonnet 5.5` on `seidel-2d`, still about 280× as fast as single-threaded CPU).
 
 One reproduced claim, `Sonnet 5.5` returning `+0.0` instead of `-0.0` in never-written `fdtd-2d` border cells, was waived.
 
@@ -43,9 +43,9 @@ Raw bug counts depend on how many kernels a model passes in the Verifier. Figure
 
 Three observations follow from Figure 2 and Table 1:
 
-1. **The three flagship models have zero disqualifying bugs.** Across 89 Verifier-passed solutions from Fable 5.2, Gemini 4 Neon, and GPT-6.2 Astra, no solution fails Bug Verification; Neon carries only one borderline allocation error at 1.4 billion rows by 2 columns.
+1. **No flagship solution fails the Bug Verifier.** Across the 89 Verifier-passed solutions from Fable 5.2, Gemini 4 Neon, and GPT-6.2 Astra, none fails Bug Verification. The flagships are not bug-free: Neon fails `nussinov` at the Verifier with a wrong output, and its `gramschmidt` solution carries a borderline allocation error at 1.4 billion rows by 2 columns, kept and marked.
 2. **Hand-written low-level optimization does not imply higher defect rates among top closed models.** Across 119 Verifier passes from Fable 5.2, Opus 5.5, Sonnet 5.5, and Gemini 4 Neon—which write runtime NVRTC `tcgen05.mma` kernels, 16-bit DPX, and spectral transforms—only one fails (`Opus 5.5` on `lu`, deadlocking on call 2,541,396).
-3. **Disqualifying defects cluster in specific open-weight models and Haiku 4.5.** DeepSeek-V4-Flash loses 5 of 29 passes (17.2%, including 4 computation errors), Kimi K3 loses 4 of 29 (13.8%, 3 computation errors), GLM-5.3-Flash loses 3 of 26 (11.5%), and Haiku 4.5 loses 4 of 21 (19.0%). In contrast, GLM-5.2 passes all 30 kernels with zero failing bugs, relying mainly on cuBLAS and direct kernels.
+3. **Disqualifying defects cluster in specific open-weight models and Haiku 4.5.** DeepSeek-V4-Flash loses 5 of 29 passes (17.2%, including 4 wrong outputs), Kimi K3 loses 4 of 29 (13.8%, 3 wrong outputs), GLM-5.3-Flash loses 3 of 26 (11.5%), and Haiku 4.5 loses 4 of 21 (19.0%). In contrast, GLM-5.2 passes all 30 kernels with zero failing bugs, relying mainly on cuBLAS and direct kernels.
 
 ## Root Causes and Affected Kernels
 

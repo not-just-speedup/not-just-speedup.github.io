@@ -391,9 +391,9 @@ def draw_bugs_funnel(summary: dict) -> None:
 
     # Legend 2 directly below bar 2 (two tidy rows)
     leg2 = [
-        (PAL.BUG_OUTCOME_COLORS["fail_computation"], f"Fail: computation ({oc['fail_computation']})"),
+        (PAL.BUG_OUTCOME_COLORS["fail_computation"], f"Fail: wrong output ({oc['fail_computation']})"),
         (PAL.BUG_OUTCOME_COLORS["fail_engineering"], f"Fail: engineering ({oc['fail_engineering']})"),
-        (PAL.BUG_OUTCOME_COLORS["kept_computation_borderline"], f"Kept: borderline comp. ({oc['kept_computation_borderline']})"),
+        (PAL.BUG_OUTCOME_COLORS["kept_computation_borderline"], f"Kept: borderline wrong output ({oc['kept_computation_borderline']})"),
         (PAL.BUG_OUTCOME_COLORS["kept_engineering_borderline"], f"Kept: borderline eng. ({oc['kept_engineering_borderline']})"),
         (PAL.BUG_OUTCOME_COLORS["waived"], f"Waived ({oc['waived']})"),
     ]
@@ -431,9 +431,9 @@ def draw_bugs_by_model(summary: dict) -> None:
 
     # Legend at top
     leg = [
-        (PAL.BUG_OUTCOME_COLORS["fail_computation"], "Fail: computation"),
+        (PAL.BUG_OUTCOME_COLORS["fail_computation"], "Fail: wrong output"),
         (PAL.BUG_OUTCOME_COLORS["fail_engineering"], "Fail: engineering"),
-        (PAL.BUG_OUTCOME_COLORS["kept_computation_borderline"], "Kept: borderline comp."),
+        (PAL.BUG_OUTCOME_COLORS["kept_computation_borderline"], "Kept: borderline wrong output"),
         (PAL.BUG_OUTCOME_COLORS["kept_engineering_borderline"], "Kept: borderline eng."),
     ]
     lx = 6.0
